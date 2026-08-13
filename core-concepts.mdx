@@ -1,0 +1,176 @@
+---
+title: "Core Concepts: How Almendra Works"
+sidebarTitle: "Core Concepts"
+description: "Learn how Almendra ingests knowledge, builds a semantic index, retrieves cited answers, and enforces permissions across your connected sources."
+---
+
+Understanding how Almendra works under the hood helps you get more out of the platform — whether you're choosing which sources to connect, interpreting confidence scores, or designing an agent integration. This page walks through each of the foundational building blocks that make up the Almendra company brain, from raw document ingestion all the way to a grounded, permission-scoped answer delivered to a user or AI agent.
+
+---
+
+## The Company Brain
+
+Almendra is built around the metaphor of a single, governed organizational memory. Most companies don't lack documentation — they lack a way to connect it. Information about how you handle security reviews lives in Confluence. Your onboarding runbook is in Notion. Customer escalation history is in Zendesk. Engineering context is scattered across GitHub issues and PR descriptions. No one person holds all of this knowledge, and no existing tool can synthesize it on demand.
+
+Almendra acts as the connective tissue between all of these sources. Unlike a traditional search engine, which returns a ranked list of documents and leaves you to read them, Almendra understands the relationships between documents and synthesizes a direct, grounded answer. Unlike a general-purpose chatbot, it never fabricates — every claim it makes is traced back to a specific document chunk in your knowledge base, with a relevance score and a direct link. The result is a brain your whole organization — and your AI agents — can rely on.
+
+---
+
+## Knowledge Sources
+
+A **knowledge source** is any external tool or document repository you connect to Almendra. Supported source types include:
+
+- **Wikis and docs:** Notion, Confluence, Google Docs, SharePoint
+- **File storage:** Google Drive, Dropbox, OneDrive, local file uploads
+- **Engineering:** GitHub (repos, issues, pull requests, wikis), GitLab
+- **Project and support:** Jira, Linear, Zendesk, Intercom, Freshdesk
+- **Web:** Public URLs and internal web crawls
+- **Structured data:** Airtable, spreadsheets, CSV files
+
+Each source is treated as an authoritative system of record. Almendra syncs your sources on a configurable schedule — or immediately on demand — and re-indexes changed content automatically. When you remove a source or revoke access, Almendra purges the associated content from the index at the next sync cycle.
+
+<Note>
+  Almendra preserves the original permission structure of every source. If a document is restricted to certain users in Notion, those same restrictions apply inside Almendra. See [Permissions](#permissions) below for how this works at query time.
+</Note>
+
+---
+
+## Ingestion & Indexing
+
+When you connect a source, Almendra runs a multi-stage ingestion pipeline designed to handle both structured and unstructured content at scale.
+
+<Accordion title="Stage 1: Fetch">
+  Almendra authenticates with the source using your stored credentials and fetches all in-scope documents, pages, tickets, wikis, and attachments. For large sources, ingestion is parallelized and throttled to respect the source API's rate limits. You can monitor ingestion progress in real time from the **Sources** dashboard.
+</Accordion>
+
+<Accordion title="Stage 2: Parse">
+  Raw content is passed through format-specific parsers:
+
+  - **Unstructured content** (PDFs, emails, plain text, HTML): extracted to clean prose with layout artifacts removed.
+  - **Structured content** (tables, spreadsheets, databases): converted into a normalized tabular representation that preserves row/column relationships and column headers as semantic context.
+  - **Code** (GitHub files, code blocks): parsed with syntax awareness so that function names, comments, and docstrings are indexed as searchable natural language.
+  - **Rich media** (images with alt text, embedded diagrams): alt text and surrounding context are indexed; raw image pixels are not stored.
+</Accordion>
+
+<Accordion title="Stage 3: Chunk">
+  Each parsed document is split into semantically coherent segments called **chunks**. Almendra uses a sentence-boundary-aware chunking strategy that avoids cutting mid-thought and preserves paragraph and section context. Chunks overlap slightly at their boundaries so that answers that span a section break are still retrievable as a unit.
+</Accordion>
+
+<Accordion title="Stage 4: Embed">
+  Every chunk is converted into a high-dimensional vector embedding using a multilingual embedding model. These embeddings capture semantic meaning, not just keywords — so a question about "how we onboard new engineers" will match a document titled "Engineering Onboarding Checklist" even if those exact words don't appear in your question.
+</Accordion>
+
+<Accordion title="Stage 5: Index metadata">
+  Alongside the vector embedding, Almendra indexes structured metadata for every chunk:
+
+  - **Source and source type** (e.g., Notion, GitHub)
+  - **Document title and URL**
+  - **Author and last-modified timestamp**
+  - **Access control list (ACL)** inherited from the source
+
+  This metadata powers filtering, permission enforcement, and the Knowledge Gaps dashboard.
+</Accordion>
+
+---
+
+## Queries and Answers
+
+A **query** is a natural-language question submitted by a user or AI agent. When Almendra receives a query, it runs a multi-stage retrieval and synthesis pipeline:
+
+1. **Hybrid retrieval.** Almendra runs three retrieval strategies in parallel: *vector search* (semantic similarity), *keyword search* (BM25-style term matching), and *graph traversal* (following relationships between linked documents, tickets, and issues). This hybrid approach ensures that both conceptually similar and textually exact matches are surfaced.
+
+2. **Reranking.** The top candidates from all three retrieval strategies are merged and reranked using a cross-encoder model that scores each chunk against the full query text. This step filters out superficially relevant results that don't actually answer the question.
+
+3. **LLM synthesis.** The reranked chunks are assembled into a context window and passed to a large language model (Claude, GPT-4, or Gemini — configurable per workspace). The model is instructed to synthesize a grounded answer using only the provided context and to cite the specific chunks that support each claim. It is explicitly instructed not to use general world knowledge to fill gaps.
+
+4. **Citation extraction.** Almendra parses the model's output, maps each claim to its source chunk, and returns a structured response containing the answer text, a confidence score, and a ranked list of source citations.
+
+<Tip>
+  You can append filters to any query to scope retrieval. For example, you can restrict a query to a specific source, document type, author, or date range using query parameters on the API. See the [API Reference](/api-reference/introduction) for details.
+</Tip>
+
+---
+
+## Confidence Scores
+
+Every answer Almendra returns includes a `confidence` field — a float between `0.0` and `1.0` — that reflects how well your connected knowledge base covers the question asked.
+
+| Score range | What it means |
+|---|---|
+| `0.85 – 1.0` | Strong evidence. Multiple high-relevance chunks support the answer. |
+| `0.60 – 0.84` | Moderate evidence. The answer is likely correct but may be incomplete. |
+| `0.30 – 0.59` | Sparse coverage. Your docs touch on this topic but don't fully address it. |
+| `0.00 – 0.29` | Low evidence. The answer is largely outside what your knowledge base covers. |
+
+<Warning>
+  A low confidence score does **not** mean Almendra will invent an answer. The synthesis step is grounded — the model only draws on retrieved chunks. A low score means the retrieved chunks are a poor match for the question, and the resulting answer should be treated with caution. Always review low-confidence answers before acting on them.
+</Warning>
+
+Queries that return a confidence score below `0.5` are automatically flagged and surfaced in the **Knowledge Gaps** dashboard. Your team can use this view to prioritize which documentation to write or update next.
+
+---
+
+## Permissions
+
+Almendra enforces permissions at **query time**, not just at ingestion time. When a user or agent submits a query, Almendra filters the retrieval candidates to include only chunks whose access control list (ACL) grants access to the querying identity.
+
+This means:
+
+- A sales rep who doesn't have access to the engineering Notion space will never receive an answer drawn from engineering-only documents — even if those documents are indexed.
+- An AI agent operating on behalf of a user inherits that user's permissions, not the admin-level permissions of the key creator.
+- If a document's permissions change in the source system (e.g., a Notion page becomes restricted), the next sync cycle propagates that change to Almendra's ACLs automatically.
+
+<Note>
+  Permission sync happens on the same schedule as content sync. For near-real-time permission updates, configure your source with a short sync interval or trigger a manual re-sync after making permission changes in the source system.
+</Note>
+
+---
+
+## Persistent Memory
+
+As users interact with Almendra and approve answers, those outputs accumulate as **persistent memory** — a growing layer of institutional knowledge that sits on top of your raw document index.
+
+When a related question arrives in the future, Almendra can draw on prior approved answers as additional context, reducing repetition and surfacing decisions that might not be explicitly documented anywhere. This is particularly valuable for:
+
+- **Decision records:** Capturing why your team chose a particular architecture, vendor, or policy.
+- **Resolved escalations:** Preserving how edge-case customer issues were handled for future reference.
+- **Meeting outcomes:** Logging action items and conclusions from recurring discussions.
+
+Persistent memory entries are versioned and attributed to the approving user. Workspace admins can review, edit, or retract any memory entry from the **Memory** section of the dashboard.
+
+---
+
+## API & MCP Server
+
+Almendra exposes two programmatic interfaces for agent and application integrations:
+
+<Tabs>
+  <Tab title="REST API">
+    The Almendra REST API lets any application query the company brain, manage sources, retrieve audit logs, and interact with the memory layer. All endpoints are authenticated with Bearer tokens and return JSON.
+
+    The primary query endpoint is:
+
+    ```
+    POST https://api.almendra.ai/api/v1/query
+    ```
+
+    AI agents — whether built with LangChain, LlamaIndex, the OpenAI Assistants API, or a custom framework — integrate with Almendra by calling this endpoint. The same permission model that governs human queries applies to every agent call.
+
+    See the [API Reference](/api-reference/introduction) for the complete endpoint catalog, request schemas, and response examples.
+  </Tab>
+  <Tab title="MCP Server">
+    The Almendra MCP (Model Context Protocol) server exposes your company brain as a native tool in MCP-compatible AI environments. Agents that support MCP — including Claude via Anthropic's tooling — can call Almendra's query, search, and memory tools directly without any custom HTTP integration code.
+
+    Configure the MCP server in your agent environment by pointing it at:
+
+    ```
+    https://mcp.almendra.ai/v1
+    ```
+
+    Authentication uses the same API keys you generate in **Settings → API Keys**. MCP tool calls are logged in the audit trail alongside REST API and dashboard queries.
+  </Tab>
+</Tabs>
+
+<Info>
+  Ready to connect your first source? See [Knowledge Sources](/sources/overview) for a full list of supported connectors and step-by-step setup guides for each one.
+</Info>

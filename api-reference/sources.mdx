@@ -1,0 +1,236 @@
+---
+title: "GET /sources and DELETE /sources — Manage Sources via API"
+sidebarTitle: "Sources"
+description: "GET /api/v1/sources lists your connected knowledge sources. DELETE /api/v1/sources/{id} removes a source and all its indexed content permanently."
+---
+
+The Sources endpoints let you inspect and manage the knowledge sources connected to your workspace. Use `GET /sources` to audit what content is indexed and check sync health, and use `DELETE /sources/{id}` to permanently remove a source and all the chunks derived from it.
+
+---
+
+## GET /sources
+
+### Endpoint
+
+```
+GET https://api.almendra.ai/api/v1/sources
+```
+
+### Description
+
+Returns all knowledge sources connected to your workspace that the API key has access to. Each source object includes its connector type, current sync status, chunk count, and the timestamp of its last successful sync. Use this endpoint to verify that your sources are active and up-to-date before issuing queries.
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.almendra.ai/api/v1/sources \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.almendra.ai/api/v1/sources",
+    headers={"Authorization": f"Bearer {ALMENDRA_API_KEY}"},
+)
+print(response.json())
+```
+
+```javascript Node.js
+const response = await fetch("https://api.almendra.ai/api/v1/sources", {
+  headers: {
+    Authorization: `Bearer ${process.env.ALMENDRA_API_KEY}`,
+  },
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+</CodeGroup>
+
+### Response Fields
+
+<ResponseField name="sources" type="object[]">
+  An array of source objects representing each connected knowledge source in your workspace.
+
+  <Expandable title="Source object fields">
+    <ResponseField name="id" type="string">
+      Unique identifier for the source. Use this value when filtering queries with `source_ids` or when deleting a source with `DELETE /sources/{id}`.
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Human-readable display name for the source, as configured in the Almendra dashboard.
+    </ResponseField>
+
+    <ResponseField name="connector" type="string">
+      The connector type that provides this source. Possible values include `notion`, `confluence`, `github`, `google-drive`, `slack`, `url`, and `api`.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      The current sync status of the source. One of:
+
+      - `active` — The source is connected and syncing normally.
+      - `indexing` — A sync is currently in progress.
+      - `error` — The last sync attempt failed. Check the Almendra dashboard for details.
+      - `paused` — Syncing has been manually paused.
+    </ResponseField>
+
+    <ResponseField name="chunks" type="integer">
+      Total number of indexed chunks currently stored for this source.
+    </ResponseField>
+
+    <ResponseField name="last_synced" type="string">
+      ISO 8601 timestamp of the most recent successful sync, or `null` if the source has never completed a sync.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total number of sources returned.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "sources": [
+    {
+      "id": "src_abc123",
+      "name": "Engineering Confluence Space",
+      "connector": "confluence",
+      "status": "active",
+      "chunks": 4821,
+      "last_synced": "2024-03-15T10:00:00Z"
+    },
+    {
+      "id": "src_def456",
+      "name": "Company Handbook (Notion)",
+      "connector": "notion",
+      "status": "active",
+      "chunks": 1203,
+      "last_synced": "2024-03-15T10:05:00Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+---
+
+## DELETE /sources/\{id\}
+
+### Endpoint
+
+```
+DELETE https://api.almendra.ai/api/v1/sources/{id}
+```
+
+### Description
+
+Permanently removes a source and deletes all indexed content derived from that source. Once deleted, the source no longer appears in `GET /sources`, and its chunks are removed from the vector store. Any future `/query` or `/search` requests will not draw from this source. This operation is irreversible.
+
+### Path Parameter
+
+<ParamField path="id" type="string" required>
+  The unique ID of the source to delete. Retrieve valid source IDs from `GET /api/v1/sources`.
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://api.almendra.ai/api/v1/sources/src_abc123 \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    "https://api.almendra.ai/api/v1/sources/src_abc123",
+    headers={"Authorization": f"Bearer {ALMENDRA_API_KEY}"},
+)
+print(response.json())
+```
+
+```javascript Node.js
+const response = await fetch(
+  "https://api.almendra.ai/api/v1/sources/src_abc123",
+  {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${process.env.ALMENDRA_API_KEY}`,
+    },
+  }
+);
+
+const data = await response.json();
+console.log(data);
+```
+
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "id": "src_abc123",
+  "deleted": true
+}
+```
+
+<Warning>
+  Deleting a source removes all indexed content for that source permanently. Queries that previously drew from this source will no longer return related answers. This cannot be undone.
+</Warning>
+
+### Error Responses
+
+<Accordion title="401 Unauthorized">
+  Returned when the `Authorization` header is missing or contains an invalid API key.
+
+  ```json
+  {
+    "error": "unauthorized",
+    "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+  }
+  ```
+</Accordion>
+
+<Accordion title="404 Not Found">
+  Returned when no source with the given ID exists in your workspace, or the API key does not have access to it.
+
+  ```json
+  {
+    "error": "not_found",
+    "message": "No source found with ID 'src_abc123'."
+  }
+  ```
+</Accordion>
+
+<Accordion title="429 Too Many Requests">
+  Returned when you exceed the rate limit for your plan. Respect the `Retry-After` header in the response.
+
+  ```json
+  {
+    "error": "rate_limit_exceeded",
+    "message": "You have exceeded the request rate limit. Please retry after 30 seconds.",
+    "retry_after": 30
+  }
+  ```
+</Accordion>
+
+---
+
+<CardGroup cols={2}>
+  <Card title="Query Endpoint" icon="brain" href="/api-reference/query">
+    Ask a natural-language question and receive a synthesized answer with citations from your knowledge base.
+  </Card>
+  <Card title="Ingest Endpoint" icon="upload" href="/api-reference/ingest">
+    Push raw text or a URL into your knowledge base for immediate indexing and retrieval.
+  </Card>
+</CardGroup>

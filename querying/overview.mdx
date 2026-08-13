@@ -1,0 +1,49 @@
+---
+title: "Querying Your Company Brain with Almendra"
+sidebarTitle: "Overview"
+description: "Almendra supports two query modes: AI Q&A for synthesized answers with citations, and semantic search for retrieving raw matching document chunks."
+---
+
+Almendra gives you two distinct ways to extract knowledge from your connected sources. The first is **AI Q&A**, which takes a natural-language question and returns a single synthesized answer drawn from across your knowledge base, complete with source citations and a confidence score. The second is **Semantic Search**, which skips synthesis entirely and returns a ranked list of raw document chunks that match your query. Both modes run through the same permission-aware index, so every user — whether human or an API-calling agent — only ever sees content they are authorized to access.
+
+## Choosing a Query Mode
+
+Understanding when to reach for each mode will help you and your team get the most out of Almendra.
+
+<CardGroup cols={2}>
+  <Card title="AI Q&A" icon="circle-question">
+    Ask a question in plain language and receive a single, synthesized answer. Best for getting a direct, trustworthy response without needing to read through multiple documents. Almendra cites every source it used and attaches a confidence score so you know how well the answer is grounded.
+  </Card>
+  <Card title="Semantic Search" icon="magnifying-glass">
+    Retrieve ranked document chunks without synthesis. Best for finding relevant source material directly — for example, to pass as context to your own LLM pipeline, to build a custom search UI, or to audit which documents cover a topic.
+  </Card>
+</CardGroup>
+
+## How the Permission-Aware Index Works
+
+Every query — regardless of mode — is evaluated against your workspace's access controls before any content is returned. When a user submits a question or search query, Almendra checks which connected sources that user is permitted to read and limits the index search to those sources. This means:
+
+- A support engineer who can access Confluence but not a private legal Notion space will never see legal documents in their answers or search results.
+- API queries made with a service account token inherit the permissions assigned to that service account.
+- Admins with full access see answers synthesized from the entire knowledge base.
+
+No additional configuration is required to enforce this — permissions are inherited from the source integrations you set up during connection.
+
+## Mode Reference
+
+Use the cards below to jump directly to the documentation for each query mode and related topics.
+
+<CardGroup cols={2}>
+  <Card title="Ask Questions" icon="comment-dots" href="/querying/ask-questions">
+    Learn how to submit AI Q&A requests from the dashboard or the REST API, filter by source, and interpret the response payload.
+  </Card>
+  <Card title="Search" icon="list-ul" href="/querying/search">
+    Run semantic vector search to retrieve raw document chunks, configure result count, set a minimum score threshold, and pipe results into your own systems.
+  </Card>
+  <Card title="Citations & Confidence" icon="shield-check" href="/querying/citations-confidence">
+    Understand how confidence scores are calculated, how to read source citations, and what the escalation flag means for your team.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/query">
+    Explore the full query endpoint specification, including all request parameters, response schemas, and error codes.
+  </Card>
+</CardGroup>

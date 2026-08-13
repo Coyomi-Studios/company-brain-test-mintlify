@@ -1,0 +1,131 @@
+---
+title: "Manage, Resync, and Remove Knowledge Sources"
+sidebarTitle: "Managing Sources"
+description: "View sync status, trigger manual resyncs, update source scope, and remove knowledge sources from your Almendra workspace."
+---
+
+Once you've connected your knowledge sources, Almendra gives you full control over how they sync and what they contribute to your company brain. From the Sources page in the dashboard you can monitor indexing health, trigger immediate resyncs, adjust scope, pause sources temporarily, or remove them permanently. This page covers each management action in detail.
+
+## Viewing source status
+
+The **Sources** page is your central view of everything connected to your workspace. Navigate to **Sources** in the left sidebar to see the full list.
+
+Each row in the Sources list displays:
+
+| Column | Description |
+|---|---|
+| **Name** | The display name of the source, set when you added it. Click to open the source detail panel. |
+| **Type** | The connector type — for example, Notion, GitHub, URL, or API. |
+| **Chunks** | The total number of indexed chunks currently in your workspace from this source. A higher number means more content is available for queries. |
+| **Last Synced** | The timestamp of the most recently completed sync. |
+| **Status** | Current state of the source: **Active**, **Indexing**, **Error**, or **Paused**. |
+
+Click any source name to open its detail panel. There you'll find the full **Sync History** log — a timestamped record of every sync run, including duration, chunks added or removed, and any errors encountered.
+
+## Triggering a manual resync
+
+Almendra resyncs sources automatically on the configured schedule, but you can trigger a resync at any time — for example, immediately after making significant changes to your source content.
+
+**From the dashboard:** On the Sources page, find the source you want to resync and click **Resync** in its action menu (the three-dot icon on the right). The status changes to **Indexing** while the sync runs.
+
+**From the API:** Send a POST request to the source's resync endpoint using the source ID. You can find the source ID in the source detail panel under **Settings**.
+
+```bash
+curl -X POST https://api.almendra.ai/api/v1/sources/src_abc123/resync \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+
+A successful response confirms the sync has been queued:
+
+```json
+{
+  "source_id": "src_abc123",
+  "status": "indexing",
+  "queued_at": "2025-01-15T10:32:00Z"
+}
+```
+
+<Tip>
+  If a source is in **Error** status, triggering a manual resync is a good first step. Check the Sync History for the specific error message before reaching out to support — many errors resolve on re-try after a transient upstream issue (such as an OAuth token expiry or a rate-limit from the source API).
+</Tip>
+
+## Updating source scope
+
+For native OAuth connectors, you can expand or narrow the pages, folders, repos, or projects that Almendra indexes at any time — without re-authenticating.
+
+1. On the Sources page, click the source name to open its detail panel.
+2. Click **Edit** at the top of the panel.
+3. Adjust your scope selection — add or remove workspaces, spaces, drives, repos, or folders as needed.
+4. Click **Save**.
+
+Almendra immediately queues a targeted re-index: newly added scope is indexed from scratch, removed scope is deleted from the index, and unchanged scope is left as-is. You won't lose previously indexed content from the unchanged portions of your source while the update is processing.
+
+<Info>
+  Scope updates for large sources — such as adding an entire Google shared drive — may take several minutes to complete. The source shows **Indexing** status during this time.
+</Info>
+
+## Pausing a source
+
+Pausing a source stops all future scheduled syncs for that source. Existing indexed content stays in your workspace and remains fully queryable — your team's questions will still be answered using the last-indexed snapshot of the source.
+
+To pause a source, click the three-dot action menu next to the source on the Sources page and select **Pause**. The status changes to **Paused**.
+
+To resume syncing, open the same menu and click **Resume**. Almendra immediately runs a sync to catch up on any changes since the pause, then returns to the regular sync schedule.
+
+**When to pause:** Use pausing when a source is temporarily unreliable (such as during a major Confluence migration), when you want to freeze content for an audit period, or when you're troubleshooting unexpected query results from a particular source.
+
+## Removing a source
+
+Removing a source permanently deletes all indexed chunks from that source from your Almendra workspace. Queries that previously returned answers from that source will no longer surface that content.
+
+<Warning>
+  Removing a source deletes all indexed chunks from that source. Queries against that content will no longer return results. This action cannot be undone — if you need the content again in the future, you will need to reconnect the source and run a full re-index.
+</Warning>
+
+**From the dashboard:**
+1. On the Sources page, click the three-dot action menu next to the source.
+2. Select **Remove**.
+3. Type the source name in the confirmation dialog to confirm deletion.
+4. Click **Remove Source**.
+
+**From the API:** Send a DELETE request with the source ID:
+
+```bash
+curl -X DELETE https://api.almendra.ai/api/v1/sources/src_abc123 \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+
+A successful response returns:
+
+```json
+{
+  "source_id": "src_abc123",
+  "status": "deleted",
+  "chunks_removed": 842
+}
+```
+
+The `chunks_removed` field confirms how many chunks were purged from your workspace index.
+
+## Sync schedule
+
+By default, Almendra resyncs all active sources every **24 hours**. You can customize this per source to match how frequently your source content changes.
+
+To change a source's sync frequency:
+
+1. Click the source name to open its detail panel.
+2. Navigate to the **Settings** tab.
+3. Under **Sync Frequency**, choose one of the available options:
+
+| Frequency | Best for |
+|---|---|
+| **Hourly** | High-velocity sources like Zendesk tickets or Jira issues in active sprints. |
+| **Every 6 hours** | Frequently updated wikis or documentation sites. |
+| **Daily** | Most knowledge bases — the default, balancing freshness and API quota usage. |
+| **Weekly** | Stable reference content that rarely changes, such as archived handbooks or completed project docs. |
+
+4. Click **Save Settings**. The new schedule takes effect on the next sync cycle.
+
+<Note>
+  Hourly sync is available on the **Pro** and **Enterprise** plans. Workspaces on the **Starter** plan are limited to Daily and Weekly sync frequencies.
+</Note>

@@ -1,0 +1,117 @@
+---
+title: "Almendra REST API Reference Overview"
+sidebarTitle: "Introduction"
+description: "The Almendra REST API lets you query, search, ingest, and manage knowledge sources programmatically. Base URL: https://api.almendra.ai/api/v1."
+---
+
+Almendra exposes a REST API at `https://api.almendra.ai/api/v1` that gives you programmatic access to your company's knowledge base. All requests require an API key passed as a Bearer token in the `Authorization` header, all request and response bodies use JSON, and the API is versioned — the current version is `v1`.
+
+## Base URL and Versioning
+
+Every request you make to the Almendra API must target the versioned base URL below. The version identifier (`v1`) is embedded directly in the path, so your integration remains stable as Almendra evolves.
+
+```
+https://api.almendra.ai/api/v1
+```
+
+Breaking changes — such as removed fields, changed parameter names, or altered response shapes — are never introduced within an existing version. When a breaking change is necessary, Almendra releases it under a new version prefix (e.g., `/api/v2`) and announces a migration timeline in advance.
+
+## Available Endpoints
+
+The table below lists every endpoint available in `v1`. Click through to the individual reference pages for full parameter and response documentation.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/query` | Ask a natural-language question and receive a synthesized answer with source citations. |
+| `POST` | `/search` | Run semantic vector search and receive a ranked list of matching document chunks. |
+| `POST` | `/ingest` | Ingest raw text or a URL into the workspace knowledge base. |
+| `GET` | `/sources` | List all knowledge sources connected to the workspace. |
+| `DELETE` | `/sources/{id}` | Remove a knowledge source and permanently delete all of its indexed content. |
+| `GET` | `/audit` | Retrieve audit log events. Requires an Admin or Owner role. |
+
+## Rate Limits
+
+Almendra enforces per-workspace request limits that vary by plan. Every API response includes three headers that tell you exactly where you stand in the current window.
+
+| Plan | Daily Request Limit |
+|------|-------------------|
+| Free | 100 requests / day |
+| Cloud | 10,000 requests / day |
+| Enterprise | Custom — contact your account team |
+
+### Rate Limit Response Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Total requests allowed in the current window. |
+| `X-RateLimit-Remaining` | Requests remaining before the limit is reached. |
+| `X-RateLimit-Reset` | Unix timestamp indicating when the current window resets and your limit is restored. |
+
+<Note>
+  If you exceed your rate limit, the API returns `429 Too Many Requests`. Wait
+  until the reset time shown in `X-RateLimit-Reset` before retrying. For
+  sustained high-volume workloads, consider upgrading your plan or contacting
+  support to discuss Enterprise limits.
+</Note>
+
+## HTTP Status Codes
+
+Almendra uses standard HTTP status codes to communicate the outcome of every request. Use the code your client receives to decide how to handle the response before inspecting the body.
+
+<Accordion title="200 OK">
+  The request succeeded. The response body contains the data you requested or a confirmation of the action performed.
+</Accordion>
+
+<Accordion title="400 Bad Request">
+  The request was missing required parameters or contained invalid values. Inspect the `error.message` field in the response body for details on what to correct.
+</Accordion>
+
+<Accordion title="401 Unauthorized">
+  The `Authorization` header was absent, malformed, or contained an invalid or revoked API key. Generate a new key or verify the one you are using.
+</Accordion>
+
+<Accordion title="403 Forbidden">
+  The API key is valid but does not have the permissions required to perform this action. Check the role assigned to your key in the dashboard under **Settings → API Keys**.
+</Accordion>
+
+<Accordion title="404 Not Found">
+  The requested resource does not exist. Verify the path and any resource IDs you are supplying (for example, the `{id}` in `DELETE /sources/{id}`).
+</Accordion>
+
+<Accordion title="429 Too Many Requests">
+  You have exceeded your plan's rate limit. Pause requests until the Unix timestamp in `X-RateLimit-Reset` has elapsed, then resume.
+</Accordion>
+
+<Accordion title="500 Internal Server Error">
+  An unexpected error occurred on Almendra's infrastructure. These are rare — if the error persists across retries, contact support with your request ID.
+</Accordion>
+
+## Error Response Format
+
+All error responses — regardless of status code — return a consistent JSON body with a machine-readable `code` and a human-readable `message`. Build your error handling logic against the `code` field so it remains stable even if `message` wording changes.
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "The provided API key is invalid or has been revoked."
+  }
+}
+```
+
+## Explore the API
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+    Learn how to generate API keys, pass them in requests, and handle authentication errors.
+  </Card>
+  <Card title="Query Endpoint" icon="message-question" href="/api-reference/query">
+    Ask natural-language questions and receive synthesized answers with source citations.
+  </Card>
+  <Card title="Search Endpoint" icon="magnifying-glass" href="/api-reference/search">
+    Run semantic vector search and retrieve ranked document chunks from your knowledge base.
+  </Card>
+  <Card title="Ingest Endpoint" icon="arrow-up-to-line" href="/api-reference/ingest">
+    Add raw text or URLs to your knowledge base programmatically for immediate querying.
+  </Card>
+</CardGroup>

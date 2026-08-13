@@ -1,0 +1,93 @@
+---
+title: "Source Citations and Confidence Scores Explained"
+sidebarTitle: "Citations & Confidence"
+description: "Every Almendra answer includes a confidence score and source citations so you know how reliable the answer is and exactly where it came from."
+---
+
+Every answer Almendra returns is traceable. Rather than generating content from its own internal knowledge, Almendra grounds every response in the documents inside your connected knowledge base. The confidence score and source citations that accompany each answer are your primary tools for evaluating how well-supported that answer is and for verifying it against the original material. Understanding both concepts will help you build trust in Almendra's outputs and identify where your knowledge base needs attention.
+
+## Why Citations Matter
+
+Almendra never fabricates answers. Every claim in a response traces back to a specific document chunk retrieved from your knowledge base during that query. This has three practical benefits for your team:
+
+1. **Verification** — Anyone reading an answer can click through to the original document and confirm the information is accurate and up to date.
+2. **Auditability** — When a process or policy changes, stale documentation becomes immediately visible because old documents will surface as citations with potentially outdated content.
+3. **Trust** — Teams are far more likely to act on AI-generated answers when they can see exactly where the information came from and check it themselves.
+
+## Understanding Confidence Scores
+
+The `confidence` field in every query response is a float between 0.0 and 1.0. It reflects how strongly the evidence found in your knowledge base supports the answer Almendra synthesized — not a measure of Almendra's own certainty as a model, but a measure of how much relevant, high-quality content was available to draw from.
+
+<Accordion title="0.85 – 1.0 · High Confidence">
+  Strong evidence was found across one or more sources. The answer is well-grounded and the supporting documents directly address the question. You can treat high-confidence answers as reliable for most operational purposes, though clicking through to the cited sources for critical decisions is always good practice.
+</Accordion>
+
+<Accordion title="0.60 – 0.84 · Moderate Confidence">
+  Relevant content was found, but coverage may be partial or the supporting passages address the question indirectly. The answer is a reasonable synthesis of what's available. Review the cited sources to fill in any gaps before relying on the answer for important decisions.
+</Accordion>
+
+<Accordion title="0.40 – 0.59 · Low Confidence">
+  Only sparse evidence was found. The answer represents a best-effort synthesis from limited context and may be incomplete or imprecise. Treat the response with caution, check whether the relevant content exists in a source that hasn't been connected yet, and consider updating your knowledge base.
+</Accordion>
+
+<Accordion title="0.0 – 0.39 · Very Low / Knowledge Gap">
+  Almendra could not find sufficient evidence to construct a grounded answer. The question likely touches a topic that is not yet covered by any of your connected sources, or the existing content is too thin to support synthesis. These questions are automatically flagged as knowledge gaps in your dashboard.
+</Accordion>
+
+<Tip>
+  Low-confidence questions automatically appear in the **Knowledge Gaps** section of your dashboard, giving your team a continuously updated view of where to improve documentation and which source connections to prioritize.
+</Tip>
+
+## Reading Source Citations
+
+Each object in the `sources` array of a query response gives you full traceability back to the original document chunk that contributed to the answer.
+
+```json
+{
+  "id": "chunk_xyz789",
+  "title": "Enterprise Billing FAQ",
+  "source": "notion",
+  "score": 0.91,
+  "url": "https://notion.so/your-workspace/enterprise-billing-faq"
+}
+```
+
+| Field | Description |
+|---|---|
+| `id` | The unique identifier for this specific document chunk in the Almendra index. |
+| `title` | The title of the document this chunk was extracted from. |
+| `source` | The connector name identifying which system this document came from — for example, `notion`, `confluence`, `github`, or `gdrive`. |
+| `score` | The relevance score for this specific chunk on a scale of 0.0 to 1.0, reflecting how closely the chunk's content matched the question. |
+| `url` | A direct link back to the original document in the source tool. Click this to open the full document in Notion, Confluence, or whichever system it lives in. |
+
+Multiple sources in a single response indicate that Almendra synthesized the answer from more than one document. This is common for questions that span topics — for example, a question about enterprise onboarding might draw from an HR handbook, a technical setup guide, and a billing FAQ simultaneously.
+
+## The `escalated` Flag
+
+When the `escalated` field in a query response is `true`, Almendra determined that the question requires human review before an answer should be acted upon. Escalation is triggered in two main scenarios:
+
+- **Very low confidence** — The confidence score fell below your workspace's configured escalation threshold, meaning Almendra does not have sufficient evidence to provide a reliable answer.
+- **Out-of-scope question** — The question falls outside the coverage of any connected source, which may indicate sensitive or specialized content that hasn't been ingested yet.
+
+When a question is escalated, the answer field may still contain a best-effort response, but you should treat it as unverified until a human reviews it. Configure who receives escalation notifications and how they are routed in **Settings → Escalation**.
+
+<Warning>
+  If your team is using Almendra's API to power an automated workflow or customer-facing assistant, always check the `escalated` flag before passing the answer downstream. Route escalated responses to a human review queue rather than sending them to end users automatically.
+</Warning>
+
+## Improving Answer Quality
+
+If you consistently see low-confidence answers for a category of questions, one of the following is usually the cause:
+
+- **The relevant content lives in an unconnected source** — Navigate to **Sources** and add the system where that content lives, then wait for the initial sync to complete.
+- **The existing content is outdated or incomplete** — Update the source document directly in the originating tool (Notion, Confluence, etc.) and trigger a manual resync from the Sources page to pull in the latest version.
+- **The question is out of scope for your workspace** — Some questions genuinely fall outside what your team has documented. Use the Knowledge Gaps dashboard to prioritize which topics to document next.
+
+<CardGroup cols={2}>
+  <Card title="Manage Sources" icon="database" href="/sources/managing-sources">
+    Add, configure, and resync your connected knowledge sources to keep Almendra's index current and comprehensive.
+  </Card>
+  <Card title="Ingest via API" icon="arrow-up-from-bracket" href="/api-reference/ingest">
+    Push documents, snippets, or structured data directly into your knowledge base using the ingest API endpoint.
+  </Card>
+</CardGroup>

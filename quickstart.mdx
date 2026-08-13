@@ -1,47 +1,155 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Almendra in Under 10 Minutes"
+sidebarTitle: "Quickstart"
+description: "Connect your first knowledge source, ask your first question, and make your first API call with Almendra in a single guided walkthrough."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide walks you through everything you need to go from zero to a working Almendra integration — a connected knowledge source, a live answer from the dashboard, and a successful API call from your terminal. Follow each step in order and you'll be up and running in under 10 minutes.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+
+  <Step title="Create your account">
+    Navigate to [app.almendra.ai](https://app.almendra.ai) and sign up using your Google account, GitHub account, or a work email address. After you complete signup, Almendra drops you directly on the main dashboard — no waiting for an email confirmation if you use Google or GitHub SSO.
+
+    If your organization already has an Almendra workspace, ask your workspace admin to send you an invite link instead. Joining through an invite automatically places you in the correct workspace with the right permissions pre-configured.
+  </Step>
+
+  <Step title="Generate an API key">
+    You'll need an API key to make programmatic queries and connect agents. To generate one:
+
+    1. Click your avatar in the top-right corner and open **Settings**.
+    2. Select the **API Keys** tab from the left sidebar.
+    3. Click **New API Key**, give it a descriptive name (e.g., `local-dev` or `production-agent`), and click **Create**.
+    4. Copy the key immediately — Almendra only displays it once.
+
+    <Tip>
+      Store your API key as an environment variable rather than hardcoding it in your source files. Set it in your shell profile or `.env` file:
+
+      ```bash
+      export ALMENDRA_API_KEY=alm_your_key_here
+      ```
+
+      Use a secrets manager (AWS Secrets Manager, HashiCorp Vault, Doppler) in production environments to avoid exposing keys in version control.
+    </Tip>
+
+    <Warning>
+      API keys inherit the permissions of the user who created them. If you create a key under an admin account, that key can access all sources in the workspace. Create service-account keys with the minimum required access level.
+    </Warning>
+  </Step>
+
+  <Step title="Connect a knowledge source">
+    Almendra is only as powerful as the sources you connect. From the dashboard, click **Add Source** in the left sidebar to open the source connector panel.
+
+    **To connect Notion (or any OAuth source):**
+    1. Select **Notion** from the connector list.
+    2. Click **Connect with OAuth** — you'll be redirected to Notion's authorization screen.
+    3. Grant Almendra access to the pages and databases you want to index.
+    4. Return to the dashboard and select which pages or databases to include in the sync.
+    5. Click **Start Sync**. Almendra begins indexing immediately; a progress indicator shows the ingestion status in real time.
+
+    <Note>
+      For a quick test without OAuth setup, choose the **URL** connector instead. Paste any publicly accessible documentation URL (for example, your company's public help center) and Almendra will crawl, parse, and index it within seconds.
+    </Note>
+
+    Once indexing completes, the source appears in your **Sources** list with a green status badge and a document count. You're ready to ask questions.
+  </Step>
+
+  <Step title="Ask your first question">
+    Click the search bar at the top of the dashboard — or press `⌘ K` (Mac) / `Ctrl K` (Windows/Linux) — and type a natural-language question about content in your newly connected source.
+
+    For example:
+    ```
+    How do we handle SSO for enterprise customers?
+    ```
+
+    Almendra returns a structured answer that includes:
+
+    - **Answer text** — a synthesized, human-readable response grounded in your documents.
+    - **Confidence score** — a number between 0.0 and 1.0 indicating how well your knowledge base covers the question. Scores above 0.85 indicate strong evidence; scores below 0.5 surface in the Knowledge Gaps dashboard for your team to address.
+    - **Source citations** — a ranked list of documents, pages, or tickets that informed the answer, each with a relevance score and a direct link back to the original content.
+
+    A typical response in the dashboard looks like this:
+
+    ```json
+    {
+      "answer": "Enterprise customers using SSO can authenticate via SAML 2.0 or OIDC. Workspace admins configure the identity provider under Settings → Security → SSO. Once enabled, password-based login is automatically disabled for all non-admin accounts.",
+      "confidence": 0.92,
+      "sources": [
+        {
+          "document": "Enterprise Security Guide",
+          "relevance": 0.95,
+          "url": "https://notion.so/your-workspace/enterprise-security-guide"
+        },
+        {
+          "document": "SSO Configuration Runbook",
+          "relevance": 0.88,
+          "url": "https://notion.so/your-workspace/sso-configuration-runbook"
+        }
+      ]
+    }
+    ```
+
+    <Tip>
+      Ask follow-up questions in the same session — Almendra maintains context across turns so you can drill deeper without restating background information.
+    </Tip>
+  </Step>
+
+  <Step title="Make your first API call">
+    With your API key set as an environment variable, you can query your company brain programmatically from any application or agent. Run the following command in your terminal:
 
     ```bash
-    npm install your-package
+    curl -X POST https://api.almendra.ai/api/v1/query \
+      -H "Authorization: Bearer $ALMENDRA_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"question": "How do we handle SSO for enterprise customers?"}'
     ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+    Almendra responds with a JSON object containing the synthesized answer, a confidence score, and the full source citation list:
 
-    ```bash
-    your-cli start
+    ```json
+    {
+      "id": "qry_01hx9z3k5m2p8t7w6n4j",
+      "question": "How do we handle SSO for enterprise customers?",
+      "answer": "Enterprise customers using SSO can authenticate via SAML 2.0 or OIDC. Workspace admins configure the identity provider under Settings → Security → SSO. Once enabled, password-based login is automatically disabled for all non-admin accounts.",
+      "confidence": 0.92,
+      "sources": [
+        {
+          "document": "Enterprise Security Guide",
+          "source_type": "notion",
+          "relevance": 0.95,
+          "url": "https://notion.so/your-workspace/enterprise-security-guide",
+          "last_modified": "2024-11-03T14:22:00Z"
+        },
+        {
+          "document": "SSO Configuration Runbook",
+          "source_type": "notion",
+          "relevance": 0.88,
+          "url": "https://notion.so/your-workspace/sso-configuration-runbook",
+          "last_modified": "2024-10-19T09:45:00Z"
+        }
+      ],
+      "created_at": "2025-01-15T10:31:44Z"
+    }
     ```
+
+    You can also scope a query to a specific source, filter by author, or set a minimum confidence threshold using optional request parameters. See the [API Reference](/api-reference/introduction) for the full parameter list.
+
+    <Note>
+      The same API endpoint powers AI agent integrations. Whether you're building a Slack bot, an internal copilot, or an autonomous agent pipeline, your agents query the identical brain — with the same permission enforcement — that your human teammates use from the dashboard.
+    </Note>
   </Step>
+
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## What's Next
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+You've connected a source, retrieved your first cited answer, and made a successful API call. Here's where to go from here.
+
+<CardGroup cols={2}>
+  <Card title="Explore Sources" icon="plug" href="/sources/overview">
+    Browse all supported connectors — Notion, Confluence, Google Drive, GitHub, Jira, Zendesk, and more — and learn how to configure advanced sync settings.
+  </Card>
+  <Card title="API Reference" icon="terminal" href="/api-reference/introduction">
+    Explore the complete REST API and MCP server spec, including source management, audit log queries, and streaming response endpoints.
+  </Card>
+</CardGroup>

@@ -1,0 +1,100 @@
+---
+title: "Ask Questions with AI-Synthesized Answers"
+sidebarTitle: "Ask Questions"
+description: "Use Almendra's AI Q&A to get synthesized answers from your connected knowledge sources, complete with source citations and a confidence score."
+---
+
+Almendra's AI Q&A mode takes a plain-language question and synthesizes a single, grounded answer by searching across every knowledge source you have access to. Each response includes a confidence score indicating how strongly the evidence supports the answer, along with source citations you can click through to verify the original content. You can submit questions interactively from the dashboard or programmatically via the REST API.
+
+## From the Dashboard
+
+<Steps>
+  <Step title="Open the query bar">
+    Open the Almendra dashboard and click the search bar at the top of any page, or press `/` from anywhere in the app to focus it instantly.
+  </Step>
+  <Step title="Type your question">
+    Enter your question in plain language. Almendra understands natural language, so write the way you would ask a colleague — for example, "What is our SLA for enterprise customers?" or "How do I set up SSO?". You do not need to use keywords or special syntax.
+  </Step>
+  <Step title="Submit and wait for the answer">
+    Press **Enter**. Almendra queries all sources you have access to, retrieves the most relevant document chunks, and returns a synthesized answer at the top of the results panel. This typically takes two to five seconds depending on the size of your knowledge base.
+  </Step>
+  <Step title="Review the cited sources">
+    Below the answer, expand the **Sources** panel to see every document chunk Almendra used to construct the response. Each source shows its title, the connector it came from (e.g., Notion, Confluence), and a relevance score between 0.0 and 1.0.
+  </Step>
+  <Step title="Open the original document">
+    Click any source citation to open the original document directly in the source tool. Use this to read full context, verify accuracy, or share the authoritative reference with a colleague.
+  </Step>
+</Steps>
+
+## Via the API
+
+Use the `POST /api/v1/query` endpoint to submit questions from any application, agent, or automation. Authenticate using your workspace API key passed as a Bearer token.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.almendra.ai/api/v1/query \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is our refund policy?"}'
+```
+
+```python Python
+import os, requests
+
+response = requests.post(
+    "https://api.almendra.ai/api/v1/query",
+    headers={"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"},
+    json={"question": "What is our refund policy?"}
+)
+data = response.json()
+print(data["answer"])
+print(f"Confidence: {data['confidence']}")
+for src in data["sources"]:
+    print(f"  - {src['title']} (score: {src['score']})")
+```
+</CodeGroup>
+
+### Response Payload
+
+A successful request returns a JSON object containing the synthesized answer, a confidence score, and the list of source chunks that were used.
+
+```json
+{
+  "answer": "Customers can request a full refund within 30 days of purchase. After 30 days, store credit is available at the team's discretion.",
+  "confidence": 0.91,
+  "sources": [
+    {
+      "id": "chunk_abc123",
+      "title": "Refund Policy — Customer Handbook",
+      "source": "notion",
+      "score": 0.93,
+      "url": "https://notion.so/..."
+    }
+  ],
+  "escalated": false
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `answer` | string | The synthesized answer generated from your knowledge base. |
+| `confidence` | float | A score from 0.0 to 1.0 reflecting how strongly the evidence supports the answer. |
+| `sources` | array | The document chunks used to construct the answer, each with an id, title, source connector, relevance score, and URL. |
+| `escalated` | boolean | `true` if Almendra determined the question requires human review. See [Citations & Confidence](/querying/citations-confidence) for details. |
+
+## Filtering by Source
+
+If you want to scope a question to a specific subset of your connected sources, pass a `source_ids` array in the request body. Almendra will only search within the specified sources when generating the answer.
+
+```json
+{
+  "question": "What are the deployment steps?",
+  "source_ids": ["src_abc123", "src_def456"]
+}
+```
+
+This is useful when you know a topic lives in a particular system — for example, limiting an engineering question to your GitHub wiki — or when building a scoped assistant that should only draw from a defined set of documents.
+
+<Tip>
+  Scores above 0.85 indicate strong evidence in your knowledge base. If confidence is below 0.5, the question may touch on a knowledge gap — check the **Knowledge Gaps** section in your dashboard to see which topics lack coverage and where you should add or update content.
+</Tip>

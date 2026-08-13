@@ -1,0 +1,156 @@
+---
+title: "Audit Log: Track Every Knowledge Access"
+sidebarTitle: "Audit Log"
+description: "Almendra's audit log records every query, search, and ingest event with user identity, timestamp, source accessed, and confidence score for compliance and review."
+---
+
+Almendra maintains an immutable, append-only audit log that captures every meaningful event in your workspace — from individual queries and source syncs to member invitations and API key rotations. Use the audit log to meet compliance requirements, investigate unexpected access patterns, and demonstrate to auditors exactly who accessed which knowledge and when.
+
+## What the audit log records
+
+The log is intentionally content-blind: it records structured metadata about what was accessed, not the text of questions or answers. This means you get full visibility into access patterns without the log itself becoming a sensitive data store.
+
+Each log entry includes the following fields:
+
+| Field | Description |
+|---|---|
+| **Timestamp** | ISO 8601 date-time in UTC (e.g., `2024-03-15T14:32:10Z`) |
+| **Event type** | Categorized action — see the full list below |
+| **Actor** | Authenticated user email or API key display name |
+| **Source(s) accessed** | The source identifiers that contributed chunks to the response |
+| **Confidence** | For `query` events, the answer confidence score (0–1) |
+| **IP address** | The originating IP of the request |
+
+### Event types
+
+<AccordionGroup>
+  <Accordion title="Knowledge events">
+    - `query` — A user or API key submitted a natural-language question to the brain.
+    - `search` — A user or API key ran a keyword or semantic search without requesting a synthesized answer.
+    - `ingest` — A document or file was manually uploaded and indexed.
+    - `source.sync` — An automatic or manually triggered resync of a connected source.
+  </Accordion>
+
+  <Accordion title="Administration events">
+    - `member.invite` — An invitation was sent to a new workspace member.
+    - `member.remove` — A member was removed from the workspace.
+    - `member.role_change` — A member's role was updated.
+    - `apikey.create` — A new API key was created.
+    - `apikey.revoke` — An API key was revoked.
+    - `source.add` — A new source connection was established.
+    - `source.remove` — A source was disconnected and its index purged.
+  </Accordion>
+</AccordionGroup>
+
+## Viewing the audit log
+
+Open the audit log from **Settings → Audit Log**. The table displays the 100 most recent events by default. Use the filter bar to narrow results by:
+
+- **Event type** — select one or more event categories
+- **Actor** — filter by a specific user email or API key name
+- **Date range** — set a start and end date in UTC
+- **Source** — filter to events that touched a specific connected source
+
+Click any row to expand the full event payload, including all metadata fields and the raw JSON record.
+
+## Exporting the audit log
+
+### Dashboard export
+
+To download the currently filtered view, click **Export CSV** in the top-right corner of the Audit Log page. The CSV contains all fields for every event matching your active filters, up to your plan's retention window.
+
+### API export
+
+Pull audit events programmatically to feed your SIEM, compliance platform, or data warehouse.
+
+<CodeGroup>
+```bash List recent query events
+curl 'https://api.almendra.ai/api/v1/audit?event_type=query&limit=100' \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+
+```bash Filter by actor and date range
+curl 'https://api.almendra.ai/api/v1/audit?actor=alice%40yourcompany.com&from=2024-03-01T00%3A00%3A00Z&to=2024-03-31T23%3A59%3A59Z' \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+
+```bash Paginate with a cursor
+curl 'https://api.almendra.ai/api/v1/audit?limit=100&cursor=evt_xyz789' \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY"
+```
+</CodeGroup>
+
+**Example response:**
+
+```json
+{
+  "events": [
+    {
+      "id": "evt_abc123",
+      "timestamp": "2024-03-15T14:32:10Z",
+      "event_type": "query",
+      "actor": "alice@yourcompany.com",
+      "question": "[redacted]",
+      "sources_accessed": ["notion:handbook", "confluence:engineering"],
+      "confidence": 0.91,
+      "ip": "198.51.100.42"
+    }
+  ],
+  "total": 1,
+  "cursor": null
+}
+```
+
+<Info>
+  The `question` field is always returned as `[redacted]` in the API response. Almendra does not store the text of queries. Only the metadata fields listed above are persisted.
+</Info>
+
+<Tip>
+  For regulated industries, use the audit log export API to stream records to your SIEM or compliance platform on a schedule. Set up a cron job or event-driven pipeline that polls the `/audit` endpoint with a sliding time window and forwards new events to Splunk, Datadog, or your preferred destination.
+</Tip>
+
+## Tamper-evident records
+
+Almendra's audit log is append-only. No workspace member — including Owners and Admins — can modify or delete individual log entries. This design ensures that the log remains a trustworthy record for compliance and forensic purposes.
+
+<CardGroup cols={2}>
+  <Card title="Minimum 90-day retention" icon="clock">
+    All plans retain audit log records for at least 90 days from the event timestamp. Records older than the retention window are automatically purged.
+  </Card>
+  <Card title="Custom retention (Enterprise)" icon="building">
+    Enterprise plans support custom retention periods beyond 90 days. Configure your retention window in Settings → Audit Log → **Retention Policy**.
+  </Card>
+  <Card title="External log streaming (Enterprise)" icon="arrow-right-from-bracket">
+    Stream audit events in real time to Splunk, Datadog, Amazon S3, or any webhook-compatible endpoint. Configure integrations in Settings → Audit Log → **Streaming**.
+  </Card>
+  <Card title="Cryptographic integrity" icon="lock">
+    Each log record includes a chained hash of the previous record, allowing you to detect any gap or tampering attempt in an exported log sequence.
+  </Card>
+</CardGroup>
+
+## Setting up log alerts
+
+Configure proactive alerts so you are notified when suspicious or out-of-policy activity occurs, rather than discovering it during a manual review.
+
+<Steps>
+  <Step title="Open alert configuration">
+    Navigate to **Settings → Audit Log → Alerts** and click **New Alert**.
+  </Step>
+  <Step title="Choose a trigger condition">
+    Select from preset conditions or define a custom threshold:
+    - High-volume queries from a single API key within a rolling time window
+    - Access to a designated sensitive source outside business hours
+    - Any `member.remove` or `apikey.revoke` event
+    - First-seen IP address for a given actor
+  </Step>
+  <Step title="Set notification channels">
+    Choose one or more delivery methods: email, Slack webhook, or a custom HTTPS endpoint. Each channel can be tested before saving.
+  </Step>
+  <Step title="Activate the alert">
+    Click **Save Alert**. Almendra evaluates the condition against incoming events in real time. You receive a notification within seconds of a triggering event.
+  </Step>
+</Steps>
+
+<Note>
+  Alert delivery is best-effort for Starter and Growth plans. Enterprise plans include guaranteed delivery SLAs and alert history retention for 12 months.
+</Note>

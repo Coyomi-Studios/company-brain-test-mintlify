@@ -1,30 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
+  "projectType": "saas",
+  "projectName": "Almendra",
+  "projectDescription": "Almendra is an AI-powered company brain platform that connects your knowledge sources, documents, and workflows into a single governed intelligence layer your team and AI agents can query instantly.",
   "theme": "almond",
-  "name": "Almendra",
-  "colors": {
-    "primary": "#ef7025",
-    "light": "#eec9bc",
-    "dark": "#4fa1ab"
-  },
-  "favicon": "/favicon.svg",
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:support@almendra.ai"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Get Started",
-      "href": "https://app.almendra.ai"
-    }
-  },
+  "primaryColor": "#ef7025",
+  "lightColor": "#eec9bc",
+  "darkColor": "#4fa1ab",
   "navigation": {
     "tabs": [
       {
@@ -97,10 +78,22 @@
       }
     ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/almendra_ai",
-      "linkedin": "https://linkedin.com/company/almendra"
-    }
-  }
+  "keyFeatures": [
+    "Connect knowledge sources (Notion, Confluence, Google Drive, GitHub, Jira, Zendesk)",
+    "AI-powered Q&A with source citations and confidence scores",
+    "REST API and MCP server for agent integration",
+    "Role-based access control and permission-aware retrieval",
+    "Tamper-evident audit log for every knowledge access",
+    "Knowledge gap detection and continuous improvement",
+    "Persistent memory — decisions and approvals build reusable context",
+    "Support for multiple LLM backends (Claude, OpenAI, Gemini)"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/query — Ask a question, get a cited answer with confidence score",
+    "POST /api/v1/search — Raw vector search returning document chunks with relevance scores",
+    "POST /api/v1/ingest — Ingest a URL or raw text into the knowledge base",
+    "GET /api/v1/sources — List all connected knowledge sources",
+    "DELETE /api/v1/sources/{id} — Remove a knowledge source",
+    "MCP server — query_knowledge, list_sources, search_documents tools for any MCP-compatible agent"
+  ]
 }

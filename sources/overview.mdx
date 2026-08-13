@@ -1,0 +1,70 @@
+---
+title: "Knowledge Sources: Connect Your Company's Data"
+sidebarTitle: "Overview"
+description: "Knowledge sources are the tools and documents Almendra ingests to build your company brain. Learn how sources work and which types are supported."
+---
+
+Knowledge sources are the foundation of your Almendra company brain. A source is any external system, document, or data feed that Almendra ingests, indexes, and queries against when your team or an AI agent asks a question. Every answer Almendra returns is grounded in the content you've connected — so the quality, breadth, and freshness of your sources directly determines the quality of your intelligence layer.
+
+## What counts as a source?
+
+Almendra organizes sources into three categories based on how content enters the platform.
+
+<CardGroup cols={2}>
+  <Card title="Native Connectors" icon="plug">
+    Pre-built OAuth integrations for tools your team already uses — Notion, Confluence, Google Drive, GitHub, Jira, and Zendesk. Almendra authenticates directly with each tool and pulls structured content on a configurable sync schedule.
+  </Card>
+  <Card title="URL Crawlers" icon="globe">
+    Point Almendra at any public URL or sitemap and it will recursively crawl all linked pages under that root. Ideal for public documentation sites, marketing pages, or any web-accessible knowledge base.
+  </Card>
+  <Card title="Direct Ingest" icon="code">
+    Push raw text, structured JSON, PDFs, or DOCX files into Almendra programmatically via the `/api/v1/ingest` endpoint, or upload files directly in the dashboard. Best for internal handbooks, one-off documents, or custom pipeline content.
+  </Card>
+  <Card title="MCP Ingest" icon="puzzle-piece">
+    Push content from any MCP-compatible tool directly into Almendra's index. Useful for connecting proprietary internal systems without building a full custom integration.
+  </Card>
+</CardGroup>
+
+## How sources behave
+
+Once connected, every source in your workspace follows the same lifecycle: authenticate, index, sync, and serve.
+
+**Initial indexing** happens immediately after you add a source. Almendra fetches all in-scope content, splits it into semantically meaningful chunks, embeds each chunk, and stores it in your workspace's vector index. Status shows as **Indexing** during this phase — queries against the source will reflect partial results until indexing completes.
+
+**Scheduled syncs** keep your index fresh. By default, Almendra resyncs active sources every 24 hours, detecting new, updated, and deleted content and updating chunks accordingly. You can change sync frequency per source — from hourly to weekly — under the source's Settings.
+
+**Chunk tracking** gives you visibility into how much content each source contributes. The Sources list shows the total number of indexed chunks per source, along with the last sync timestamp and current status.
+
+**Permission-preserving sync** means Almendra respects the access controls defined in your source systems. When Almendra indexes a Google Drive folder, for example, it records which users have access to each document. At query time, results are filtered to only surface content the requesting user is allowed to see.
+
+<Note>
+  Permission-preserving sync means a document a user cannot access in the original tool — a restricted Confluence page, a private GitHub repo, a Drive file shared only with the executive team — will never appear in that user's Almendra answers, even if it exists in the index.
+</Note>
+
+## Source status at a glance
+
+Every source in your workspace reports one of four statuses:
+
+| Status | Meaning |
+|---|---|
+| **Active** | Last sync completed successfully. Content is current and queryable. |
+| **Indexing** | Initial or manual sync is in progress. Content may be partially available. |
+| **Error** | Last sync failed. Almendra will retry on the next scheduled cycle. Check Sync History for details. |
+| **Paused** | Syncs are disabled. Existing indexed content remains queryable, but changes in the source are not picked up. |
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Connect a Source" icon="circle-plus" href="/sources/connecting-sources">
+    Step-by-step instructions for adding a native connector, URL crawler, or API ingest source.
+  </Card>
+  <Card title="Supported Integrations" icon="grid-2" href="/sources/supported-integrations">
+    Full list of native connectors available in Almendra and what each one indexes.
+  </Card>
+  <Card title="Manage Sources" icon="sliders" href="/sources/managing-sources">
+    View sync status, trigger manual resyncs, update scope, pause, or remove a source.
+  </Card>
+  <Card title="Ingest via API" icon="terminal" href="/api-reference/ingest">
+    API reference for the `/api/v1/ingest` endpoint, including request schema and metadata fields.
+  </Card>
+</CardGroup>

@@ -1,0 +1,143 @@
+---
+title: "Connect a Knowledge Source to Almendra"
+sidebarTitle: "Connecting Sources"
+description: "Step-by-step instructions for adding a knowledge source in the Almendra dashboard, from OAuth connectors to URL crawlers and API ingest."
+---
+
+Adding a knowledge source is the first step to building your Almendra company brain. Almendra supports three methods for ingesting content: native OAuth connectors for tools like Notion, Confluence, and GitHub; a URL crawler for any publicly accessible web page or documentation site; and a direct API ingest endpoint for programmatic or custom content pipelines. Each method is covered below.
+
+## Method 1: Native connector (OAuth)
+
+Native connectors are the fastest way to bring in structured knowledge from tools your team already uses. Authentication is handled via OAuth — Almendra never stores your credentials.
+
+<Steps>
+  <Step title="Open the Add Source dialog">
+    In the Almendra dashboard, navigate to **Sources** in the left sidebar. Click **Add Source** in the top-right corner of the page.
+  </Step>
+  <Step title="Choose your connector">
+    Browse the connector library or use the search bar to find your tool — for example, **Notion**, **Confluence**, or **Google Drive**. Click the connector tile to open the setup panel.
+  </Step>
+  <Step title="Authenticate with OAuth">
+    Click **Authenticate**. You will be redirected to the source tool's OAuth authorization screen. Review the list of permissions Almendra is requesting — these are the minimum permissions needed to read your content — and click **Allow** (or the equivalent button for your tool). You'll be redirected back to Almendra automatically once authorization succeeds.
+  </Step>
+  <Step title="Select your sync scope">
+    After authentication, Almendra loads a list of the workspaces, spaces, drives, or repositories available under your account. Select everything you want indexed. You can include or exclude specific sub-folders, projects, or repos at this stage, and you can adjust scope again later without re-authenticating.
+  </Step>
+  <Step title="Start the initial sync">
+    Click **Start Sync**. Almendra queues the initial index job immediately. The source status changes to **Indexing** — you can see live progress on the Sources page. Once indexing is complete, the status updates to **Active** and your content becomes queryable.
+  </Step>
+</Steps>
+
+<Tip>
+  Initial sync time depends on the size of your source. A large Confluence space with thousands of pages may take 15–30 minutes. Check real-time progress by going to **Sources** → click the source name → **Sync History**.
+</Tip>
+
+## Method 2: URL crawler
+
+Use the URL crawler to index any public documentation site, marketing page, or web-accessible knowledge base. Almendra crawls all pages reachable from the root URL you provide.
+
+<Steps>
+  <Step title="Open the Add Source dialog">
+    Navigate to **Sources** → **Add Source** → select **URL** from the connector list.
+  </Step>
+  <Step title="Enter a root URL">
+    Type or paste the root URL of the site you want to index — for example, `https://docs.yourcompany.com`. Almendra crawls all pages linked from this root that share the same origin domain. Pages outside the root domain are not followed.
+  </Step>
+  <Step title="Set a crawl depth limit (optional)">
+    The **Crawl Depth** setting controls how many levels of links Almendra follows from the root. The default is **3 levels**, which covers most documentation sites. Increase this for large nested sites, or decrease it to limit scope to top-level pages only.
+
+    <Info>
+      Depth is measured in link hops from the root URL. A page linked directly from the root is depth 1. A page linked from that page is depth 2, and so on.
+    </Info>
+  </Step>
+  <Step title="Start the crawl">
+    Click **Start Sync**. Almendra begins crawling immediately. Progress is visible in the source's Sync History. Once the crawl completes, all discovered pages are indexed and available for queries.
+  </Step>
+</Steps>
+
+<Note>
+  The URL crawler only indexes publicly accessible pages. Pages behind a login, CAPTCHA, or IP allowlist cannot be crawled. For authenticated internal tools, use a native connector or the API ingest method instead.
+</Note>
+
+## Method 3: API ingest
+
+The API ingest method lets you push content directly into Almendra from any system or pipeline. Use it for internal handbooks, database exports, CRM notes, or any content that doesn't have a native connector.
+
+<Steps>
+  <Step title="Get your API key">
+    In the Almendra dashboard, open **Settings** → **API Keys** → **Create Key**. Copy the key — it will only be shown once. Store it securely as an environment variable (e.g., `ALMENDRA_API_KEY`).
+  </Step>
+  <Step title="Send a POST request to /api/v1/ingest">
+    Submit your content as a JSON payload. The `content` field is required. Use the `metadata` object to attach structured context — title, source name, author, and any custom key-value pairs you want to filter on later.
+
+    <CodeGroup>
+      ```bash cURL
+      curl -X POST https://api.almendra.ai/api/v1/ingest \
+        -H "Authorization: Bearer $ALMENDRA_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "content": "Our refund policy allows returns within 30 days of purchase.",
+          "metadata": {
+            "title": "Refund Policy",
+            "source": "handbook",
+            "author": "ops-team"
+          }
+        }'
+      ```
+      ```python Python
+      import os, requests
+
+      response = requests.post(
+          "https://api.almendra.ai/api/v1/ingest",
+          headers={"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"},
+          json={
+              "content": "Our refund policy allows returns within 30 days of purchase.",
+              "metadata": {
+                  "title": "Refund Policy",
+                  "source": "handbook",
+                  "author": "ops-team",
+              },
+          },
+      )
+      print(response.json())
+      ```
+      ```typescript TypeScript
+      const response = await fetch("https://api.almendra.ai/api/v1/ingest", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.ALMENDRA_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: "Our refund policy allows returns within 30 days of purchase.",
+          metadata: {
+            title: "Refund Policy",
+            source: "handbook",
+            author: "ops-team",
+          },
+        }),
+      });
+
+      const data = await response.json();
+      console.log(data);
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Confirm the response">
+    A successful ingest returns HTTP `200` with a JSON body confirming the chunk ID, status, and number of chunks created from your content:
+
+    ```json
+    {
+      "id": "chunk_abc123",
+      "status": "indexed",
+      "chunks": 1
+    }
+    ```
+
+    Longer documents are split into multiple chunks automatically. The `chunks` field reflects the total number created.
+  </Step>
+</Steps>
+
+<Tip>
+  After ingesting content via the API, you can verify it appears in your workspace by going to **Sources** → **API Ingest** → **Sync History**. Each ingest call is logged with its timestamp, chunk count, and metadata.
+</Tip>

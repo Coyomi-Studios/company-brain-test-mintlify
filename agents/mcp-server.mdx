@@ -1,0 +1,163 @@
+---
+title: "Connect AI Agents via the Almendra MCP Server"
+sidebarTitle: "MCP Server"
+description: "Use the Almendra MCP server to give Claude, Cursor, and other MCP-compatible agents native access to your company knowledge base as a tool."
+---
+
+The Almendra MCP server lets any MCP-compatible AI agent call your company knowledge base as a native tool, using your existing API key and permission settings — no custom integration code, no middleware, and no changes to your agent's prompt logic. If your agent host supports the Model Context Protocol, this is the fastest way to give it accurate, cited, permission-scoped answers from your Almendra workspace.
+
+## What is the MCP server?
+
+MCP (Model Context Protocol) is an open standard for exposing external tools and data sources to AI agents in a structured, discoverable way. Instead of hard-coding API calls into your prompts or agent scaffolding, you register an MCP server once and the agent automatically discovers the tools it provides.
+
+Almendra's MCP server exposes your company brain as a set of typed tools that MCP-compatible hosts — including Claude Desktop, Cursor, and Windsurf — can call directly. The agent decides when to invoke each tool based on the user's question, passes the right parameters, and incorporates the response into its answer. You get all of Almendra's governance (key-scoped permissions, audit logging, source citations) without writing a single line of integration code.
+
+## Available MCP tools
+
+The Almendra MCP server exposes three tools. Each tool maps directly to a REST endpoint, so behavior and permissions are identical whether the agent calls via MCP or the API directly.
+
+| Tool | Description | Equivalent endpoint |
+|---|---|---|
+| `query_knowledge` | Ask a natural-language question and receive a synthesized answer with inline source citations. | `POST /api/v1/query` |
+| `search_documents` | Run semantic search and receive a ranked list of document chunks with relevance scores. | `POST /api/v1/search` |
+| `list_sources` | List all knowledge sources the agent's API key is authorized to access. | `GET /api/v1/sources` |
+
+Use `query_knowledge` when your agent needs a direct answer. Use `search_documents` when it needs raw chunks for its own synthesis or reranking logic. Use `list_sources` to let the agent reason about what knowledge domains are available before deciding how to answer.
+
+## Configure Claude Desktop
+
+<Steps>
+  <Step title="Generate an API key">
+    In Almendra, go to **Settings → API Keys** and click **New API Key**. Give it a descriptive name (for example, `claude-desktop-personal`), select the knowledge sources this agent should have access to, and click **Create**. Copy the key — it won't be shown again.
+  </Step>
+  <Step title="Open claude_desktop_config.json">
+    Locate your Claude Desktop configuration file. On macOS it lives at:
+
+    ```
+    ~/Library/Application Support/Claude/claude_desktop_config.json
+    ```
+
+    On Windows, the path is:
+
+    ```
+    %APPDATA%\Claude\claude_desktop_config.json
+    ```
+
+    Create the file if it doesn't exist yet.
+  </Step>
+  <Step title="Add the Almendra MCP server">
+    Add the following entry inside the `mcpServers` object. If the file already contains other MCP servers, add the `"almendra"` block alongside them.
+
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "almendra": {
+          "command": "npx",
+          "args": ["-y", "@almendra/mcp-server"],
+          "env": {
+            "ALMENDRA_API_KEY": "alm_your_key_here",
+            "ALMENDRA_API_URL": "https://api.almendra.ai"
+          }
+        }
+      }
+    }
+    ```
+
+    Replace `alm_your_key_here` with the API key you copied in step 1.
+  </Step>
+  <Step title="Restart Claude Desktop">
+    Quit and relaunch Claude Desktop. Open a new conversation and look for **Almendra** listed under the **Tools** section in the toolbar. If you see it, the MCP server is connected and ready.
+  </Step>
+  <Step title="Ask a company-specific question">
+    Type a question that requires knowledge from your Almendra workspace — for example, *"What is our refund policy for enterprise customers?"*. Claude will automatically call `query_knowledge`, retrieve the answer with citations, and incorporate it into its response. You'll see the tool call listed in the conversation alongside Claude's reply.
+  </Step>
+</Steps>
+
+## Configure Cursor or Windsurf
+
+Both Cursor and Windsurf support MCP servers via a project-level or global configuration file. Add the Almendra server using the same pattern as Claude Desktop.
+
+<CodeGroup>
+
+```json .cursor/mcp.json
+{
+  "mcpServers": {
+    "almendra": {
+      "command": "npx",
+      "args": ["-y", "@almendra/mcp-server"],
+      "env": {
+        "ALMENDRA_API_KEY": "alm_your_key_here"
+      }
+    }
+  }
+}
+```
+
+```json .windsurf/mcp_config.json
+{
+  "mcpServers": {
+    "almendra": {
+      "command": "npx",
+      "args": ["-y", "@almendra/mcp-server"],
+      "env": {
+        "ALMENDRA_API_KEY": "alm_your_key_here"
+      }
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+Place the file at the project root for project-scoped access, or in your home directory's equivalent config location for global access. Reload your editor after saving the file.
+
+## Custom MCP clients
+
+If your agent uses an MCP client library directly — for example, in a Python or TypeScript automation — you can connect to the Almendra MCP server programmatically using the standard `StdioServerParameters` pattern. The example below uses the official Python MCP SDK.
+
+```python mcp_client.py
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+import asyncio
+import os
+
+server_params = StdioServerParameters(
+    command="npx",
+    args=["-y", "@almendra/mcp-server"],
+    env={"ALMENDRA_API_KEY": os.environ["ALMENDRA_API_KEY"]}
+)
+
+async def ask_company_brain(question: str) -> str:
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(
+                "query_knowledge",
+                arguments={"question": question}
+            )
+            return result.content[0].text
+
+if __name__ == "__main__":
+    answer = asyncio.run(ask_company_brain("What are our SLA commitments?"))
+    print(answer)
+```
+
+The session calls `initialize()` to complete the MCP handshake and discover available tools, then invokes `query_knowledge` with your question. The response includes the synthesized answer and source citations as returned by Almendra.
+
+<Tip>
+  Each MCP server instance uses a single API key. Create a dedicated API key for each agent in **Settings → API Keys** to keep audit logs clean and permissions scoped correctly. This way, if you need to revoke access for one agent, you can do so without affecting any other.
+</Tip>
+
+## Troubleshooting
+
+<Accordion title="The Almendra tool doesn't appear in Claude Desktop">
+  Verify that `npx` is available in the shell environment Claude Desktop uses. Open a terminal and run `npx --version`. If it's not found, install Node.js from [nodejs.org](https://nodejs.org). Also double-check that your `claude_desktop_config.json` is valid JSON — a trailing comma or missing bracket will prevent the file from being parsed.
+</Accordion>
+
+<Accordion title="Tool calls return a 401 Unauthorized error">
+  Your API key is missing, incorrect, or has been revoked. Go to **Settings → API Keys** in Almendra, confirm the key exists and is active, and re-paste it into your config file. Make sure there are no extra spaces or newline characters around the key value.
+</Accordion>
+
+<Accordion title="The agent returns answers but cites no sources">
+  This usually means the API key is not authorized for any knowledge sources. In **Settings → API Keys**, open the key's settings and confirm that at least one source is listed under **Authorized Sources**. If the sources list is empty, the agent can authenticate but cannot retrieve any content.
+</Accordion>

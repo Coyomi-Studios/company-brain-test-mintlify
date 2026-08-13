@@ -1,0 +1,120 @@
+---
+title: "Data Privacy and Security in Almendra"
+sidebarTitle: "Data Privacy"
+description: "How Almendra handles your data: zero model training, permission-aware retrieval, encryption at rest and in transit, and per-tenant isolation."
+---
+
+Almendra is built on the principle that your organization's knowledge belongs to your organization — not to Almendra, not to any model provider, and never to another tenant. This page explains exactly how Almendra handles your data at every stage: ingestion, storage, retrieval, and deletion. Read it alongside the [Permissions](/governance/permissions) and [Audit Log](/governance/audit-log) pages for a complete picture of how Almendra protects your information.
+
+## We don't train on your data
+
+Almendra uses retrieval-augmented generation (RAG) exclusively. When you ask a question, Almendra retrieves relevant chunks from your indexed sources and passes them — alongside your question — to a large language model to synthesize an answer. Your documents are never used as training data for any AI model, whether operated by Almendra or a third-party LLM provider.
+
+To give you the strongest possible data isolation guarantee, Almendra supports bringing your own LLM API key. When you configure your own key, inference calls flow directly from Almendra's retrieval layer to the model provider under your account, governed by your agreement with that provider rather than Almendra's.
+
+<Info>
+  Even when you use Almendra's default hosted model configuration, Almendra's agreements with model providers explicitly prohibit the use of customer query data for model training or improvement.
+</Info>
+
+## Permission-aware retrieval
+
+Almendra does not copy your documents into a flat, shared index. Every chunk stored in the vector index carries the access control list (ACL) from its source system — the same permissions that govern who can read the document in Notion, Confluence, GitHub, or any other connected tool. At query time, Almendra filters the candidate chunks to only those that the requesting user is authorized to see before the retrieval result is ever passed to the language model.
+
+This means a user cannot receive an answer that draws on content they are not permitted to read, even indirectly through a synthesized response.
+
+## Encryption
+
+Almendra encrypts your data both while it moves across the network and while it rests in storage.
+
+<CardGroup cols={2}>
+  <Card title="In transit" icon="shield">
+    All API and dashboard traffic is encrypted using TLS 1.2 or higher. Connections that do not meet this requirement are rejected. Certificate pinning is available for Enterprise deployments.
+  </Card>
+  <Card title="At rest" icon="database">
+    All stored data — including vector chunks, document metadata, audit log records, and workspace configuration — is encrypted using AES-256. Encryption keys are managed via a dedicated key management service and rotated on a scheduled basis.
+  </Card>
+</CardGroup>
+
+## Per-tenant isolation
+
+Each Almendra workspace is isolated at the database and vector-index level. Your data is never commingled with another tenant's data in any shared table, collection, or index partition. Workspace identifiers are enforced at the query layer as well, so a misconfigured query cannot inadvertently reach another tenant's records.
+
+Enterprise plans support dedicated infrastructure — your workspace runs on resources that are not shared with any other customer.
+
+## PII handling
+
+Almendra does not store the text content of query questions or answers. The audit log records only structured metadata — actor, timestamp, source identifiers, and confidence score — so the log itself does not become a repository of potentially sensitive query content.
+
+If a connected source contains personally identifiable information (PII), that content is indexed and retrievable exclusively by users who are authorized to access it in the source system. Almendra does not perform any additional PII detection, masking, or scrubbing beyond enforcing the ACLs from the original source. If you need to ensure PII is not indexed, restrict access to that content in the source tool before connecting it to Almendra.
+
+## Bring your own model key
+
+Configuring Almendra to use your own LLM API key gives you direct control over how inference requests are handled by the model provider.
+
+<Tabs>
+  <Tab title="What changes">
+    - LLM inference calls are made under your OpenAI, Anthropic, or Google account.
+    - Your data is governed by your direct agreement with the model provider, not by Almendra's provider agreement.
+    - Model responses are not retained by Almendra beyond the duration of the immediate request.
+    - Usage and costs appear in your own model provider dashboard, not on your Almendra bill.
+  </Tab>
+  <Tab title="What stays the same">
+    - Almendra's permission-aware retrieval still filters chunks before they reach the model.
+    - The audit log continues to record all query events with the same metadata.
+    - Encryption in transit and at rest applies to all data that Almendra handles, regardless of which model provider you use.
+  </Tab>
+  <Tab title="How to configure">
+    <Steps>
+      <Step title="Open AI Model settings">
+        Navigate to **Settings → AI Model**.
+      </Step>
+      <Step title="Select your provider">
+        Choose **OpenAI**, **Anthropic**, or **Google** from the provider list.
+      </Step>
+      <Step title="Enter your API key">
+        Paste your API key into the key field. Almendra stores it encrypted and uses it only for inference requests on your behalf.
+      </Step>
+      <Step title="Save and verify">
+        Click **Save**. Almendra runs a lightweight validation call to confirm the key is active. You will see a green confirmation banner if the key is valid.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Compliance
+
+<AccordionGroup>
+  <Accordion title="SOC 2 Type II">
+    Almendra is undergoing SOC 2 Type II certification, covering the Security, Availability, and Confidentiality trust service criteria. Contact [support@almendra.ai](mailto:support@almendra.ai) for the current certification status and to request a copy of the latest audit report under NDA.
+  </Accordion>
+
+  <Accordion title="GDPR">
+    Almendra acts as a data processor on behalf of your organization (the data controller) when processing personal data belonging to EU data subjects. A Data Processing Agreement (DPA) that meets the requirements of GDPR Article 28 is available on request. Email [security@almendra.ai](mailto:security@almendra.ai) to request a DPA.
+  </Accordion>
+
+  <Accordion title="HIPAA">
+    Almendra supports HIPAA-compliant deployments for customers who need to connect sources containing protected health information (PHI). A Business Associate Agreement (BAA) is required before ingesting PHI. Contact [support@almendra.ai](mailto:support@almendra.ai) for information about HIPAA-compliant deployment options and to initiate a BAA.
+  </Accordion>
+
+  <Accordion title="Data residency">
+    Enterprise plans support data residency in the **European Union** (Frankfurt, AWS eu-central-1) or the **United States** (Virginia, AWS us-east-1). All data — including vector chunks, metadata, and audit logs — is stored exclusively within the selected region. Contact [sales@almendra.ai](mailto:sales@almendra.ai) to configure data residency for your workspace.
+  </Accordion>
+</AccordionGroup>
+
+## Data deletion
+
+### Removing a source
+
+To delete all indexed data for a specific source, navigate to **Sources**, click the source name, and select **Remove**. Almendra immediately removes the source connection, purges all indexed chunks and metadata associated with that source, and records the removal in the audit log. The operation is irreversible — if you reconnect the source later, Almendra performs a full resync from scratch.
+
+### Deleting your workspace
+
+To delete your entire workspace and all associated data, contact [support@almendra.ai](mailto:support@almendra.ai) from an Owner account. The support team will verify your identity and confirm the deletion request before proceeding.
+
+<Warning>
+  Workspace deletion is permanent. All indexed content, audit logs, member data, API keys, and workspace configuration are deleted and cannot be recovered. This action is irreversible. Ensure you have exported any audit log records you need for compliance purposes before submitting a deletion request.
+</Warning>
+
+---
+
+Questions about security or compliance? Email [security@almendra.ai](mailto:security@almendra.ai).

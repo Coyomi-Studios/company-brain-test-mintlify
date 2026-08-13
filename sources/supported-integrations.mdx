@@ -1,0 +1,142 @@
+---
+title: "Supported Integrations for Almendra Knowledge Sources"
+sidebarTitle: "Integrations"
+description: "Full list of native connectors available in Almendra, including Notion, Confluence, Google Drive, GitHub, Jira, Zendesk, and URL crawlers."
+---
+
+Almendra's integration library gives you pre-built, permission-aware connectors to the tools your team already relies on. Each native connector handles authentication, incremental sync, and access-control propagation automatically — so you spend less time wiring data pipelines and more time getting answers. For tools not yet in the library, the URL crawler and API ingest endpoints cover the gap. Browse the full list of supported integrations below, organized by category.
+
+<Tabs>
+  <Tab title="Wikis & Docs">
+    These connectors index structured knowledge from your team's primary documentation tools. Each one preserves the permission model of the source system.
+
+    <AccordionGroup>
+      <Accordion title="Notion" icon="n">
+        **What gets indexed:** Workspaces, pages, sub-pages, and databases — including database properties and page content blocks. Almendra respects Notion's page hierarchy so you can trace any answer back to its parent page.
+
+        **Scope options:** Select individual pages, entire databases, or full workspaces. You can mix and match.
+
+        **Permissions:** Almendra preserves Notion's permission model. Pages shared only with specific workspace members remain restricted to those members in Almendra answers. Guest access and public page settings are also honored.
+
+        **Sync behavior:** Full initial index followed by incremental updates. Changed pages are re-indexed on the next sync cycle. Deleted pages are removed from the index.
+      </Accordion>
+      <Accordion title="Confluence" icon="c">
+        **What gets indexed:** Spaces and their pages, including page attachments and inline comments. Page labels and metadata are preserved as filterable attributes.
+
+        **Deployment support:** Works with both **Confluence Cloud** and **Confluence Data Center** (version 7.0 and later). Data Center connections require a service account with read access.
+
+        **Scope options:** Select individual spaces or entire Confluence instances. You can exclude specific spaces from the sync scope.
+
+        **Permissions:** Almendra mirrors Confluence's page-level restrictions. If a page is restricted to a specific Confluence group, only members of that group see the page surfaced in Almendra.
+
+        **Sync behavior:** Incremental sync based on Confluence's `modified` timestamp. Only changed pages are re-fetched on each cycle.
+      </Accordion>
+      <Accordion title="Google Drive" icon="google-drive">
+        **What gets indexed:** Google Docs, Sheets, Slides, and uploaded PDFs. Sheets are indexed as structured tabular text. Slides are indexed per slide, preserving speaker notes.
+
+        **Scope options:** Connect at the **shared drive** level, **My Drive** level, or select individual folders. You can add multiple Drive scopes from the same Google account.
+
+        **Permissions:** Almendra reads Drive sharing settings at index time and re-checks them on every sync. Files restricted to specific users or Google Groups are only surfaced in Almendra for those users. Files with "Anyone with the link" sharing are treated as accessible to all workspace members.
+
+        **Sync behavior:** Almendra uses Google Drive's change log API to detect modified and deleted files incrementally, keeping re-index overhead low.
+      </Accordion>
+    </AccordionGroup>
+  </Tab>
+  <Tab title="Project & Support">
+    Connect your project management and customer support tools to bring operational context — issues, tickets, and help content — into your company brain.
+
+    <AccordionGroup>
+      <Accordion title="Jira" icon="jira">
+        **What gets indexed:** Issues, epics, sub-tasks, comments, and file attachments (PDF and DOCX). Issue descriptions, status, assignee, priority, and custom field values are all captured as metadata.
+
+        **Scope options:** Filter by **project key** or **label** to include only the Jira projects relevant to your team. You can connect multiple projects from the same Jira Cloud instance.
+
+        **Permissions:** Almendra respects Jira project-level permissions. Issues in private projects are only surfaced to users who have access to that project in Jira.
+
+        **Sync behavior:** New and updated issues are picked up on the next scheduled sync. Deleted issues are removed from the index within one sync cycle.
+      </Accordion>
+      <Accordion title="Zendesk" icon="headset">
+        **What gets indexed:** Support tickets (including conversation threads), Help Center articles, and macros. Ticket subject, status, tags, and requester metadata are indexed as filterable attributes.
+
+        **Scope options:** You can choose to index tickets only, Help Center articles only, or both. Filter ticket ingestion by tag or ticket form to narrow scope.
+
+        **Permissions:** Zendesk ticket access levels are preserved. Internal notes and restricted tickets are only surfaced to agents with the appropriate Zendesk role. Public Help Center articles are accessible to all workspace members.
+
+        **Sync behavior:** Tickets are synced incrementally based on the Zendesk `updated_at` timestamp. New tickets added after the initial sync are picked up automatically.
+      </Accordion>
+      <Accordion title="Linear" icon="circle-dashed">
+        **What gets indexed:** Issues, projects, and documents.
+
+        **Status:** <span>**Coming soon.**</span> Linear integration is on the roadmap. Use the API ingest endpoint to push Linear data into Almendra manually in the meantime.
+      </Accordion>
+    </AccordionGroup>
+  </Tab>
+  <Tab title="Code & Files">
+    Index technical documentation, repository wikis, and uploaded files to bring engineering knowledge into your company brain.
+
+    <AccordionGroup>
+      <Accordion title="GitHub" icon="github">
+        **What gets indexed:** READMEs, repository wikis, `/docs` folders, and all Markdown (`.md`, `.mdx`) files within selected repos. Non-documentation source code files are not indexed by default to keep the signal-to-noise ratio high.
+
+        **Public repos:** Authenticate with a GitHub personal access token or OAuth. Public repos are readable without additional permissions.
+
+        **Private repos:** Requires installation of the **Almendra GitHub App** on your GitHub organization. The app requests read-only access to repository contents and is scoped to the repos you explicitly select during setup.
+
+        **Security:** Almendra never indexes `.env` files, secrets, credentials, or any file matching common secret patterns. Sealed or archived repos are skipped entirely.
+
+        **Sync behavior:** Almendra listens for push events via GitHub webhooks on connected repos, triggering a targeted re-index of changed files within minutes of a commit.
+      </Accordion>
+      <Accordion title="GitLab" icon="gitlab">
+        **What gets indexed:** READMEs, wikis, `/docs` folders, and Markdown files — mirroring GitHub coverage.
+
+        **Status:** <span>**Coming soon.**</span> GitLab integration is on the roadmap. In the meantime, export your GitLab wiki content and ingest it via file upload or the API.
+      </Accordion>
+      <Accordion title="File Upload" icon="file-arrow-up">
+        **Supported formats:** PDF, DOCX, TXT, and CSV. Files are chunked, embedded, and added to your workspace index.
+
+        **How to upload:**
+        - **Dashboard:** Go to **Sources** → **Add Source** → **File Upload**, then drag and drop or browse for your file.
+        - **API:** POST to `/api/v1/ingest` with `Content-Type: multipart/form-data` and the file as a `file` field. See the [API reference](/api-reference/ingest) for the full schema.
+
+        **Metadata:** Attach a `title`, `source`, and any custom key-value pairs when uploading via the API to make file content easier to find and cite.
+
+        **Sync behavior:** File uploads are a one-time ingest by default. To keep a file current, re-upload the updated version or use the API to overwrite by document ID.
+      </Accordion>
+    </AccordionGroup>
+  </Tab>
+  <Tab title="Universal">
+    These universal ingest methods work with any content, regardless of where it lives.
+
+    <AccordionGroup>
+      <Accordion title="URL Crawler" icon="globe">
+        **What gets indexed:** All HTML pages reachable from the root URL you provide that share the same origin domain. Page titles, headings, body text, and meta descriptions are extracted and indexed.
+
+        **Scope control:** Set a **crawl depth limit** (default: 3 levels) to control how broadly Almendra follows links from the root. Optionally provide a sitemap URL for faster, more complete discovery.
+
+        **Restrictions:** The crawler only accesses publicly available pages. Pages behind authentication, CAPTCHAs, or IP restrictions cannot be crawled.
+
+        **Sync behavior:** Almendra re-crawls the URL source on the configured sync schedule. Changed pages are re-indexed and removed pages are cleared from the index.
+      </Accordion>
+      <Accordion title="REST API" icon="code">
+        **What gets indexed:** Any text content you POST to the `/api/v1/ingest` endpoint. Content is chunked and embedded immediately upon receipt.
+
+        **Ideal for:** Internal handbooks, CRM exports, database query results, custom internal tools, or any content that doesn't have a native connector.
+
+        **Metadata:** Attach arbitrary key-value metadata to every ingest call. Metadata is stored alongside chunks and can be used to filter results or surface citations.
+
+        **Reference:** See the [API Ingest reference](/api-reference/ingest) for the full request schema, authentication details, and rate limits.
+      </Accordion>
+      <Accordion title="MCP Ingest" icon="puzzle-piece">
+        **What gets indexed:** Content pushed from any MCP-compatible tool or agent framework directly into your Almendra workspace index.
+
+        **Ideal for:** Teams building AI agent pipelines who want a governed knowledge layer without managing a separate vector database.
+
+        **Status:** <span>**Coming soon.**</span> MCP ingest support is on the roadmap. Contact support for availability updates.
+      </Accordion>
+    </AccordionGroup>
+  </Tab>
+</Tabs>
+
+<Note>
+  Don't see your tool? Use the URL crawler or API ingest to connect any source, or contact [support@almendra.ai](mailto:support@almendra.ai) to request a native connector. We prioritize new integrations based on customer demand.
+</Note>

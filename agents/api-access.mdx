@@ -1,0 +1,224 @@
+---
+title: "Integrate AI Agents with the Almendra REST API"
+sidebarTitle: "API Access"
+description: "Connect any AI agent or automation to Almendra's REST API to query, search, and ingest knowledge programmatically with full permission enforcement."
+---
+
+Almendra's REST API gives any AI agent or backend automation direct, programmatic access to your company knowledge base. Every request is authenticated with an API key, permission-scoped to the sources you authorize, and recorded in your audit log — the same governance that applies to human users applies to every API call. Whether you're building a customer support bot, a sales assistant, or an internal knowledge tool, the REST API gives you full control over how your agent retrieves and uses company knowledge.
+
+## When to use the REST API
+
+Use the REST API when your agent or framework doesn't support the Model Context Protocol, or when you need capabilities beyond what an MCP tool exposes. Common scenarios include:
+
+- **LangChain or LlamaIndex pipelines** where Almendra is one tool in a multi-step reasoning chain
+- **Custom retrieval logic** such as reranking, hybrid search, or result post-processing before passing context to the LLM
+- **Backend automations** that ingest, query, or audit knowledge outside of an interactive agent session
+- **Streaming responses** piped directly into a real-time UI
+- **Platforms like Zapier, n8n, or Make** where you call HTTP endpoints from a workflow
+
+If your agent host supports MCP, the [MCP Server](/agents/mcp-server) is faster to configure. If you need control, use the REST API.
+
+## Authentication
+
+Agents authenticate using an API key passed in the `Authorization: Bearer` header on every request. Create a dedicated key for each agent in **Settings → API Keys** so you can track, scope, and revoke access independently per agent.
+
+```bash
+curl -X POST https://api.almendra.ai/api/v1/query \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is our enterprise pricing?"}'
+```
+
+A successful response returns the synthesized answer, a confidence score, the sources consulted, and an `escalated` flag indicating whether the query should be routed to a human.
+
+```json
+{
+  "answer": "Enterprise pricing starts at $1,200/month for up to 50 seats...",
+  "confidence": 0.91,
+  "escalated": false,
+  "sources": [
+    { "id": "src_abc123", "title": "Enterprise Pricing Guide", "url": "https://..." }
+  ]
+}
+```
+
+<Warning>
+  Never embed your API key directly in client-side code, mobile apps, or public repositories. Store keys in environment variables or a secrets manager and pass them to your agent at runtime.
+</Warning>
+
+## LangChain integration
+
+Use Almendra as a LangChain `tool` so your agent can call it automatically during a reasoning chain. The function below wraps the query endpoint and formats the response as a string the LLM can incorporate into its final answer.
+
+```python langchain_tool.py
+import os
+import requests
+from langchain.tools import tool
+from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain_openai import ChatOpenAI
+from langchain import hub
+
+@tool
+def query_company_brain(question: str) -> str:
+    """Query the company knowledge base for an answer with source citations.
+    Use this tool whenever the user asks about internal products, policies,
+    pricing, processes, or customer-specific information.
+    """
+    resp = requests.post(
+        "https://api.almendra.ai/api/v1/query",
+        headers={"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"},
+        json={"question": question},
+        timeout=30
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    if data.get("escalated"):
+        return "This question has been flagged for human review. Please escalate to a support agent."
+
+    sources = ", ".join(s["title"] for s in data.get("sources", []))
+    return f"{data['answer']}\n\nSources: {sources}"
+
+# Wire the tool into a LangChain agent
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+prompt = hub.pull("hwchase17/openai-tools-agent")
+agent = create_openai_tools_agent(llm, [query_company_brain], prompt)
+agent_executor = AgentExecutor(agent=agent, tools=[query_company_brain], verbose=True)
+
+response = agent_executor.invoke({"input": "What's the SLA for priority support?"})
+print(response["output"])
+```
+
+The tool's docstring is passed to the LLM as the tool description, so write it clearly — the model uses it to decide when to call Almendra versus answering from its own training data.
+
+## OpenAI function calling integration
+
+If you're using the OpenAI API directly, define Almendra as a function in the `tools` list. OpenAI's model will call it automatically when the user's question requires company-specific knowledge.
+
+```python openai_tool.py
+import os
+import json
+import requests
+from openai import OpenAI
+
+client = OpenAI()
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "query_company_brain",
+            "description": (
+                "Query the company knowledge base for information about products, "
+                "policies, processes, pricing, and customers. Always use this tool "
+                "before answering questions about internal company information."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The natural-language question to ask the knowledge base."
+                    },
+                    "source_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of source IDs to restrict the search to."
+                    }
+                },
+                "required": ["question"]
+            }
+        }
+    }
+]
+
+def handle_tool_call(question: str, source_ids: list = None) -> str:
+    payload = {"question": question}
+    if source_ids:
+        payload["source_ids"] = source_ids
+
+    resp = requests.post(
+        "https://api.almendra.ai/api/v1/query",
+        headers={"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"},
+        json=payload,
+        timeout=30
+    )
+    resp.raise_for_status()
+    return json.dumps(resp.json())
+
+def run_agent(user_message: str) -> str:
+    messages = [{"role": "user", "content": user_message}]
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        tools=tools,
+        tool_choice="auto"
+    )
+
+    message = response.choices[0].message
+
+    # If the model called a tool, execute it and get a final response
+    if message.tool_calls:
+        messages.append(message)
+        for tool_call in message.tool_calls:
+            args = json.loads(tool_call.function.arguments)
+            result = handle_tool_call(**args)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result
+            })
+        final = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages
+        )
+        return final.choices[0].message.content
+
+    return message.content
+
+print(run_agent("What are the terms of our standard NDA?"))
+```
+
+<Info>
+  The optional `source_ids` parameter scopes the query to specific knowledge sources. Passing it improves answer quality and reduces latency by preventing the retrieval engine from scanning sources that aren't relevant to your agent's domain.
+</Info>
+
+## Best practices
+
+<Accordion title="Use dedicated API keys per agent">
+  Create one API key per agent in **Settings → API Keys** rather than sharing a single key across multiple agents. Dedicated keys make audit logs legible — you can filter by key to see exactly what a specific agent asked and what it accessed. They also let you revoke or rotate a single agent's credentials without disrupting any others.
+</Accordion>
+
+<Accordion title="Pass source_ids to scope context">
+  Include the `source_ids` parameter in your query and search requests to limit retrieval to the knowledge sources relevant to your agent's purpose. A customer support bot should only search support documentation and product guides, not internal financial reports. Scoping reduces latency, improves answer accuracy, and ensures your agent doesn't surface information outside its intended domain.
+</Accordion>
+
+<Accordion title="Check confidence before acting">
+  Every query response includes a `confidence` score between 0 and 1. If `confidence` is below 0.5, the knowledge base did not find strong evidence for its answer. Build a threshold check into your agent so that low-confidence answers trigger an escalation to a human rather than an automated action — especially for high-stakes tasks like pricing, contracts, or compliance questions.
+
+  ```python
+  data = resp.json()
+  if data["confidence"] < 0.5:
+      return escalate_to_human(question)
+  ```
+</Accordion>
+
+<Accordion title="Handle the escalated flag">
+  When the response includes `"escalated": true`, Almendra has determined the question falls outside what the knowledge base can reliably answer — for example, because it requires real-time data, personal judgment, or information that hasn't been ingested yet. Route these questions to a human support channel rather than returning the low-confidence answer to the user.
+
+  ```python
+  if data.get("escalated"):
+      create_support_ticket(question, context=data.get("answer"))
+      return "I've escalated this to our support team, who will follow up with you shortly."
+  ```
+</Accordion>
+
+<CardGroup cols={2}>
+  <Card title="API Authentication" icon="key" href="/api-reference/authentication">
+    Generate API keys, set expiration policies, and configure source-level permissions for your agents.
+  </Card>
+  <Card title="Query Endpoint" icon="circle-question" href="/api-reference/query">
+    Full reference for the `POST /api/v1/query` endpoint — parameters, response schema, and error codes.
+  </Card>
+</CardGroup>

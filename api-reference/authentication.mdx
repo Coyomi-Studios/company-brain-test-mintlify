@@ -1,0 +1,137 @@
+---
+title: "Authenticate with the Almendra API"
+sidebarTitle: "Authentication"
+description: "Almendra API authentication uses Bearer tokens. Generate an API key in the dashboard, then pass it in the Authorization header on every request."
+---
+
+Every request to the Almendra API must include an API key as a Bearer token in the `Authorization` header. API keys are scoped to a single workspace and carry a role — either **Member** or **Agent** — that determines which endpoints and resources the key is permitted to access. There are no session cookies, OAuth flows, or client secrets: the API key is the only credential you need.
+
+## Generating an API Key
+
+<Steps>
+  <Step title="Open the Almendra dashboard">
+    Navigate to [app.almendra.ai](https://app.almendra.ai) and sign in to the workspace where you want to create the key.
+  </Step>
+  <Step title="Go to Settings → API Keys">
+    Click your workspace avatar in the top-left corner, then select **Settings**. In the left sidebar, choose **API Keys**.
+  </Step>
+  <Step title="Click New API Key">
+    Select the **New API Key** button in the top-right corner of the API Keys page.
+  </Step>
+  <Step title="Name your key">
+    Enter a descriptive name that identifies what this key is used for — for example, `support-bot`, `langchain-agent`, or `data-pipeline`. A clear name makes future auditing and rotation much easier.
+  </Step>
+  <Step title="Select a role">
+    Choose one of the two available roles:
+    - **Member** — can call `/query` and `/search`. Use this role for user-facing integrations that only need to retrieve information.
+    - **Agent** — same permissions as Member, intended specifically for automated or programmatic integrations such as bots, scripts, and pipelines.
+
+    Admin-only endpoints such as `GET /audit` and `DELETE /sources/{id}` require workspace Admin or Owner privileges and cannot be granted to API keys through this flow.
+  </Step>
+  <Step title="Optionally restrict source scope">
+    Under **Source Scope**, you can limit the key to a subset of connected knowledge sources. Leave this blank to allow access to all sources in the workspace.
+  </Step>
+  <Step title="Create and copy the key">
+    Click **Create**. Your new API key is displayed once in full. Copy it immediately and store it securely.
+  </Step>
+</Steps>
+
+<Warning>
+  Your API key is shown **only once** immediately after creation. Almendra does
+  not store the raw key value — it cannot be retrieved later. Copy it
+  immediately and store it in a secret manager (such as AWS Secrets Manager,
+  HashiCorp Vault, or 1Password) or in an environment variable. If you lose it,
+  revoke it and create a new one.
+</Warning>
+
+## Making Authenticated Requests
+
+Pass your API key in the `Authorization` header as a Bearer token on every request. The header must be formatted exactly as shown — note the capitalization and the space between `Bearer` and the key value.
+
+```bash
+curl -X POST https://api.almendra.ai/api/v1/query \
+  -H "Authorization: Bearer alm_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is our onboarding process?"}'
+```
+
+The examples below show the same authenticated request in multiple languages. Store your key in an environment variable (`ALMENDRA_API_KEY`) rather than hard-coding it in source files.
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.almendra.ai/api/v1/query \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is our onboarding process?"}'
+```
+
+```python Python
+import os
+import requests
+
+headers = {"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"}
+
+response = requests.post(
+    "https://api.almendra.ai/api/v1/query",
+    headers=headers,
+    json={"question": "What is our onboarding process?"}
+)
+
+print(response.json())
+```
+
+```javascript Node.js
+const response = await fetch('https://api.almendra.ai/api/v1/query', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.ALMENDRA_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ question: 'What is our onboarding process?' }),
+});
+
+const data = await response.json();
+console.log(data.answer);
+```
+
+</CodeGroup>
+
+## Authentication Errors
+
+Almendra returns one of two HTTP status codes when authentication fails. Use the `error.code` field in the response body to distinguish between a bad key and an insufficient-permission error.
+
+**401 Unauthorized** — the `Authorization` header is missing, malformed, or contains a key that has been revoked. Re-check the key value or generate a new one.
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "The provided API key is invalid or has been revoked."
+  }
+}
+```
+
+**403 Forbidden** — the API key is valid and recognised, but the role assigned to it does not permit the requested action. For example, a Member key cannot delete a knowledge source. Review the key's role in **Settings → API Keys** or create a new key with the appropriate permissions.
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key does not have permission to manage sources."
+  }
+}
+```
+
+## Revoking an API Key
+
+To revoke a key, navigate to **Settings → API Keys** in the dashboard and click **Revoke** next to the key you want to invalidate. Revocation takes effect immediately — any subsequent request using that key receives a `401 Unauthorized` response.
+
+<Tip>
+  Rotate API keys regularly as a security best practice. Create a new key first,
+  update your integration to use it, verify everything works, and only then
+  revoke the old key. This zero-downtime rotation ensures your service is never
+  interrupted while keeping your credentials fresh.
+</Tip>
+
+Next: [Query Endpoint →](/api-reference/query)

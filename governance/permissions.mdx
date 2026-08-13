@@ -1,0 +1,110 @@
+---
+title: "Permissions and Access Control in Almendra"
+sidebarTitle: "Permissions"
+description: "Almendra enforces role-based access control and inherits source-level permissions so users and agents only see knowledge they are authorized to access."
+---
+
+Almendra protects your organization's knowledge with two independent layers of access control: workspace roles that govern what actions a person or integration can perform inside Almendra, and source-level permissions inherited directly from the tools you connect. Together, these layers ensure that every answer Almendra returns respects the same boundaries your team already maintains in Notion, Confluence, GitHub, Zendesk, and every other connected source.
+
+## How permissions work
+
+Almendra enforces two layers of access control:
+
+1. **Workspace roles** — control what actions a member can perform in Almendra (e.g., add sources, manage members, view the audit log).
+2. **Source-level permissions** — inherited from the original tool. A Notion page that only specific team members can view in Notion will only appear in Almendra answers for those same users.
+
+## Workspace roles
+
+Each member of your Almendra workspace is assigned exactly one role. Choose the role that matches the level of trust and responsibility you want to grant.
+
+<AccordionGroup>
+  <Accordion title="Owner — full workspace control">
+    The Owner has unrestricted access to every part of the workspace, including billing, workspace settings, member management, source management, and API key management. There is exactly one Owner per workspace. Ownership can be transferred to another Admin from Settings → General → **Transfer Ownership**.
+  </Accordion>
+
+  <Accordion title="Admin — operational management">
+    Admins can manage members, add and remove sources, and create or revoke API keys. Admins cannot access or modify billing settings. Use this role for team leads or platform engineers who need to keep the brain up to date without touching financial information.
+  </Accordion>
+
+  <Accordion title="Member — query and search">
+    Members can query the brain and run searches. They cannot add or remove sources, invite other members, or manage API keys. This is the appropriate role for the majority of your organization — anyone who consumes knowledge without administering it.
+  </Accordion>
+
+  <Accordion title="Agent — API-only integration access">
+    The Agent role is designed for automated integrations and service accounts. Agents authenticate exclusively via API key and can query and search within the source scope assigned to their key. Agents cannot access the dashboard or perform administrative actions.
+  </Accordion>
+</AccordionGroup>
+
+### Inviting a member
+
+<Steps>
+  <Step title="Open Members settings">
+    Navigate to **Settings → Members**.
+  </Step>
+  <Step title="Start the invitation">
+    Click **Invite Member** in the top-right corner.
+  </Step>
+  <Step title="Enter details">
+    Enter the person's email address and select their role from the dropdown (Owner transfer excluded).
+  </Step>
+  <Step title="Send the invite">
+    Click **Send Invite**. The invitee receives an email with a one-time acceptance link valid for 48 hours.
+  </Step>
+</Steps>
+
+## Source-level permission sync
+
+When Almendra syncs a source, it records the access control list (ACL) from the original system alongside every indexed chunk. At query time, Almendra checks the requesting user's verified identity against these ACLs before including any chunk in an answer. No content crosses an ACL boundary.
+
+<CardGroup cols={2}>
+  <Card title="Confluence" icon="book">
+    A page restricted to the Engineering space is visible only to users whose Almendra identity is linked to a Confluence account with Engineering space access.
+  </Card>
+  <Card title="GitHub" icon="github">
+    Content from a private repository is returned only to users whose connected GitHub account has read access to that repository.
+  </Card>
+  <Card title="Zendesk" icon="headset">
+    Internal notes are excluded from answers for any user who does not hold an agent-level Zendesk role, matching the visibility rules you configured in Zendesk.
+  </Card>
+  <Card title="Notion" icon="file">
+    Pages shared only with specific Notion members remain invisible in Almendra answers for everyone else, even if those users are full Almendra Members.
+  </Card>
+</CardGroup>
+
+<Note>
+  Permission sync runs automatically each time a source is resynced. If you update permissions in the source tool, trigger a manual resync to propagate the change immediately.
+</Note>
+
+## API key scoping
+
+Each API key can be scoped to a specific subset of sources, giving you fine-grained control over what an integration can access. This is particularly useful when you want a customer-facing chatbot to query only your public knowledge base while a separate internal integration accesses the full workspace.
+
+<Steps>
+  <Step title="Navigate to API Keys">
+    Go to **Settings → API Keys** and click **New API Key**.
+  </Step>
+  <Step title="Name the key and assign a role">
+    Enter a descriptive name (e.g., `support-bot-prod`) and select either **Member** or **Agent** as the role. Agent keys cannot access the dashboard; Member keys inherit standard Member permissions.
+  </Step>
+  <Step title="Set source scope">
+    Under **Source Scope**, choose **All sources** to grant access to every source the key's role can see, or select specific sources to restrict the key to a named subset.
+  </Step>
+  <Step title="Create and store the key">
+    Click **Create**. Copy the key immediately — it is displayed only once and cannot be retrieved later.
+  </Step>
+</Steps>
+
+<Warning>
+  API keys are shown only once at creation. Store your key securely in a secrets manager or environment variable — never in source code or a public repository. If you lose a key, revoke it and create a new one.
+</Warning>
+
+## Revoking access
+
+Remove access immediately whenever a team member leaves your organization or an integration is decommissioned.
+
+- **Remove a member**: Go to **Settings → Members** and click **Remove** next to the member's name. Their session tokens are invalidated immediately.
+- **Revoke an API key**: Go to **Settings → API Keys** and click **Revoke** next to the key. The revocation takes effect on the next inbound request — there is no grace period.
+
+<Tip>
+  Conduct a quarterly access review in Settings → Members and Settings → API Keys to ensure that only current team members and active integrations retain access to your workspace.
+</Tip>

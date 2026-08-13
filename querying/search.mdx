@@ -1,0 +1,86 @@
+---
+title: "Semantic Search Across Your Knowledge Base"
+sidebarTitle: "Search"
+description: "Run semantic vector search across your connected sources and retrieve ranked document chunks with relevance scores using the Almendra search API."
+---
+
+Semantic search lets you query your knowledge base and retrieve raw document chunks ranked by relevance, without any AI synthesis step. Where AI Q&A returns a single synthesized answer, semantic search returns the underlying source material itself — the actual text passages that match your query, ordered from most to least relevant. This makes search the right tool when you want to retrieve and inspect source content directly, rather than receive a summarized response.
+
+## What Semantic Search Returns
+
+Each result in a search response is a **document chunk** — a passage of text extracted from one of your connected sources during the indexing process. Chunks are ranked using vector similarity, so results reflect semantic meaning rather than keyword overlap. A query for "annual leave approval process" will surface documents about time-off requests and PTO policies even if they never use those exact words.
+
+Use semantic search when you want to:
+
+- Pass raw context to your own LLM or retrieval-augmented generation (RAG) pipeline
+- Build a custom search UI that presents source snippets to users
+- Audit which documents in your knowledge base cover a given topic
+- Feed a downstream agent with grounded evidence it can reason over independently
+
+## From the Dashboard
+
+In the dashboard search bar, click the mode toggle and switch from **Ask** to **Search** before submitting your query. Results appear as a ranked list of document snippets, each showing the source connector, document title, relevance score, and a preview of the matching text. Click **View source** on any result to open the original document in the source tool.
+
+<Note>
+  Search respects your workspace permissions — you will only see chunks from sources you have access to.
+</Note>
+
+## Via the API
+
+Use the `POST /api/v1/search` endpoint to run semantic search programmatically. The request accepts a natural-language or keyword query along with optional parameters to control result count and filtering.
+
+```bash
+curl -X POST https://api.almendra.ai/api/v1/search \
+  -H "Authorization: Bearer $ALMENDRA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "enterprise SSO configuration",
+    "top_k": 5
+  }'
+```
+
+### Response Payload
+
+The response contains a `results` array of ranked document chunks and a `total` count of how many chunks were returned.
+
+```json
+{
+  "results": [
+    {
+      "id": "chunk_abc123",
+      "text": "Enterprise SSO is configured through SAML 2.0. Navigate to Settings → Security → SSO to upload your IdP metadata XML.",
+      "score": 0.94,
+      "source": "confluence",
+      "title": "Enterprise Auth Architecture",
+      "url": "https://confluence.yourcompany.com/..."
+    },
+    {
+      "id": "chunk_def456",
+      "text": "After uploading the metadata, test SSO by clicking Verify Connection. A successful test returns a green status indicator.",
+      "score": 0.88,
+      "source": "confluence",
+      "title": "Enterprise Auth Architecture",
+      "url": "https://confluence.yourcompany.com/..."
+    }
+  ],
+  "total": 2
+}
+```
+
+## Search Parameters
+
+<Accordion title="query (string, required)">
+  The text you want to search for. Write in natural language or use keywords — Almendra's vector index understands both. There is no minimum or maximum length requirement, but concise, focused queries tend to produce higher-quality ranked results.
+</Accordion>
+
+<Accordion title="top_k (integer, default 5)">
+  The number of document chunks to return. Accepts an integer between 1 and 20. Increase this value when you need broader coverage — for example, when gathering context for a RAG pipeline — and lower it when you want only the single most relevant passage. The default of 5 is appropriate for most interactive use cases.
+</Accordion>
+
+<Accordion title="source_ids (array, optional)">
+  An array of source identifier strings that limits the search to a specific subset of your connected knowledge sources. When omitted, Almendra searches across all sources you have access to. Pass one or more source IDs (e.g., `["src_abc123", "src_def456"]`) to scope results to particular systems such as a single Confluence space or a specific GitHub repository.
+</Accordion>
+
+<Accordion title="min_score (float, optional)">
+  A minimum relevance score threshold between 0.0 and 1.0. Chunks with a score below this value are excluded from the results, even if they would have ranked within your `top_k` limit. Use this parameter to enforce a quality floor — for example, set `min_score: 0.75` to return only strongly relevant chunks and avoid noisy or tangentially related results.
+</Accordion>

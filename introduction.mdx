@@ -1,0 +1,69 @@
+---
+title: "Almendra: AI-Powered Company Brain Platform"
+sidebarTitle: "Introduction"
+description: "Almendra is an AI knowledge layer that connects your company's docs, wikis, and tools into one governed brain your team and agents query for cited answers."
+---
+
+Almendra is the single source of truth your organization has always needed but never had. Your team's knowledge lives scattered across Notion, Confluence, Google Drive, GitHub, Jira, Zendesk, and a dozen other tools — and finding the right answer means opening six tabs, skimming three wikis, and pinging the one person who might remember. Studies consistently find that knowledge workers spend 30% of their work week just searching for information. Almendra eliminates that cost by connecting all of your knowledge sources into one governed intelligence layer that your team — and your AI agents — can query for accurate, cited answers in seconds.
+
+## The Problem Almendra Solves
+
+Most companies operate with 8 to 12 disconnected knowledge tools. Documentation drifts out of date. Institutional knowledge lives in someone's head or buried in a Slack thread from two years ago. When your AI agents try to answer customer questions or automate workflows, they have no reliable company context to draw from — they're flying blind. Almendra gives both humans and agents a shared, governed brain they can trust.
+
+## How Almendra Works
+
+Almendra follows a simple three-step flow from raw documents to grounded answers.
+
+1. **Connect your sources.** Authenticate with your existing tools — Notion, Confluence, Google Drive, GitHub, Jira, Zendesk, and more. Almendra fetches, parses, and indexes your content continuously, preserving the original permission model of each source.
+2. **Ask questions in plain language.** From the dashboard or via API, ask any question in natural language. Almendra runs hybrid retrieval across your entire indexed knowledge base and synthesizes a grounded answer.
+3. **Get cited, confident answers.** Every response includes a confidence score and a list of source citations — exact documents, pages, or tickets that back each claim. AI agents query the same brain through the REST API or MCP server, subject to the same permission rules that apply to human users.
+
+## Key Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Multi-Source Ingestion" icon="database">
+    Connect Notion, Confluence, Google Drive, GitHub, Jira, Zendesk, URLs, and more. Almendra continuously syncs and re-indexes as your content changes.
+  </Card>
+  <Card title="AI Q&A with Citations" icon="message-question">
+    Every answer includes a confidence score from 0.0 to 1.0 and a list of source citations with document name, relevance score, and a direct link back to the original content.
+  </Card>
+  <Card title="REST API & MCP Server" icon="code">
+    Expose your company brain to AI agents — Claude, GPT-4, Gemini, or any custom agent — through a fully documented REST API and a native MCP server interface.
+  </Card>
+  <Card title="Role-Based Permissions" icon="shield-check">
+    Almendra enforces permissions at query time, syncing access rules directly from the original source. Users and agents only see answers drawn from content they're authorized to access.
+  </Card>
+  <Card title="Audit Log" icon="scroll">
+    Every query, answer, and source access is recorded in a tamper-evident audit log. Track who asked what, when, and which documents informed each response.
+  </Card>
+  <Card title="Knowledge Gap Detection" icon="chart-bar">
+    Almendra automatically surfaces questions that returned low-confidence answers, giving your team a prioritized list of documentation gaps to close.
+  </Card>
+  <Card title="Persistent Memory" icon="brain">
+    Approved answers and decisions accumulate as reusable organizational memory. Almendra draws on prior approved outputs when related questions arise, reducing repetition and building institutional knowledge over time.
+  </Card>
+  <Card title="Semantic Understanding" icon="magnifying-glass">
+    Almendra uses vector embeddings and graph traversal — not just keyword search — to understand the relationships between documents and surface the most relevant context for each query.
+  </Card>
+</CardGroup>
+
+## Explore the Docs
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Connect your first source, ask your first question, and make your first API call in under 10 minutes.
+  </Card>
+  <Card title="Core Concepts" icon="book-open" href="/core-concepts">
+    Understand how Almendra ingests knowledge, builds its semantic index, enforces permissions, and returns cited answers.
+  </Card>
+  <Card title="Knowledge Sources" icon="plug" href="/sources/overview">
+    Browse all supported connectors and learn how to configure sync schedules, filters, and permission mapping.
+  </Card>
+  <Card title="API Reference" icon="terminal" href="/api-reference/introduction">
+    Explore the full REST API, including query endpoints, source management, audit log access, and the MCP server spec.
+  </Card>
+</CardGroup>
+
+<Note>
+  Almendra works natively with **Claude**, **OpenAI GPT-4**, and **Google Gemini**. You can route queries through any of these models depending on your organization's preferences or compliance requirements — no prompt engineering required on your end.
+</Note>

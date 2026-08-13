@@ -1,0 +1,44 @@
+---
+title: "Give AI Agents Access to Your Company Brain"
+sidebarTitle: "Overview"
+description: "Connect Claude, GPT-4, Gemini, or custom AI agents to Almendra so they can query your company knowledge base with the same governed access as your team."
+---
+
+AI agents — whether they power customer support bots, sales assistants, coding agents, or employee onboarding flows — are only as useful as the context they can access. Without company-specific knowledge, they hallucinate, give generic answers, or force users to repeat information that already lives somewhere in your organization. Almendra solves this by acting as a governed knowledge layer between your agents and the information they need, so every query returns accurate, cited, permission-scoped answers drawn from your actual company brain.
+
+## How agents connect to Almendra
+
+Almendra offers two integration paths depending on your agent's capabilities and your team's preferences.
+
+<CardGroup cols={2}>
+  <Card title="MCP Server" icon="plug" href="/agents/mcp-server">
+    Use the Model Context Protocol to give Claude Desktop, Cursor, Windsurf, and other MCP-compatible agents native tool access — no custom code required.
+  </Card>
+  <Card title="API Access" icon="code" href="/agents/api-access">
+    Call Almendra's REST API directly from any agent framework — LangChain, LlamaIndex, OpenAI function calling, or your own backend pipeline.
+  </Card>
+  <Card title="API Authentication" icon="key" href="/api-reference/authentication">
+    Learn how to generate and manage API keys, set expiration policies, and scope keys to specific knowledge sources.
+  </Card>
+  <Card title="Audit Log" icon="shield-check" href="/governance/audit-log">
+    Every agent query is recorded in your audit trail with the API key, timestamp, question, and sources accessed — so you always know what your agents are doing.
+  </Card>
+</CardGroup>
+
+## Choosing an integration path
+
+Use the **MCP Server** when your agent host already supports the Model Context Protocol. Configuration is a single JSON snippet and requires no custom code — the agent discovers Almendra's tools automatically and calls them as needed. This is the fastest path for Claude Desktop, Cursor, and Windsurf users.
+
+Use the **REST API** when your agent or automation framework doesn't support MCP, or when you need more control over retrieval logic — for example, building a custom RAG pipeline, streaming responses into a UI, or integrating Almendra as one step in a multi-tool LangChain agent.
+
+## Governance and access control
+
+Every agent that connects to Almendra is treated as a first-class identity. Access is governed by three mechanisms:
+
+- **API key authentication** — Each agent authenticates with a dedicated API key. Keys are scoped to specific knowledge sources, so an agent can only retrieve information from the sources you explicitly authorize.
+- **Permission enforcement** — Source-level permissions apply at query time. If a source is restricted to certain teams or roles, agents using a key without that permission will not receive content from that source, even if they ask for it.
+- **Audit logging** — Every query an agent makes — including the question asked, the sources accessed, and the answer returned — is written to your organization's audit log. You can filter by API key to review a specific agent's activity at any time.
+
+<Note>
+  Almendra works with any LLM or agent framework. You are not locked into a specific model provider — connect Claude, GPT-4, Gemini, Mistral, or a fully custom model using whichever integration path fits your stack.
+</Note>
