@@ -30,11 +30,12 @@ curl https://api.almendra.ai/api/v1/sources \
 ```
 
 ```python Python
+import os
 import requests
 
 response = requests.get(
     "https://api.almendra.ai/api/v1/sources",
-    headers={"Authorization": f"Bearer {ALMENDRA_API_KEY}"},
+    headers={"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"},
 )
 print(response.json())
 ```
@@ -149,11 +150,12 @@ curl -X DELETE https://api.almendra.ai/api/v1/sources/src_abc123 \
 ```
 
 ```python Python
+import os
 import requests
 
 response = requests.delete(
     "https://api.almendra.ai/api/v1/sources/src_abc123",
-    headers={"Authorization": f"Bearer {ALMENDRA_API_KEY}"},
+    headers={"Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}"},
 )
 print(response.json())
 ```
@@ -195,8 +197,10 @@ console.log(data);
 
   ```json
   {
-    "error": "unauthorized",
-    "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+    "error": {
+      "code": "unauthorized",
+      "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+    }
   }
   ```
 </Accordion>
@@ -206,8 +210,10 @@ console.log(data);
 
   ```json
   {
-    "error": "not_found",
-    "message": "No source found with ID 'src_abc123'."
+    "error": {
+      "code": "not_found",
+      "message": "No source found with ID 'src_abc123'."
+    }
   }
   ```
 </Accordion>
@@ -217,9 +223,10 @@ console.log(data);
 
   ```json
   {
-    "error": "rate_limit_exceeded",
-    "message": "You have exceeded the request rate limit. Please retry after 30 seconds.",
-    "retry_after": 30
+    "error": {
+      "code": "rate_limit_exceeded",
+      "message": "You have exceeded the request rate limit. Please retry after 30 seconds."
+    }
   }
   ```
 </Accordion>

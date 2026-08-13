@@ -89,13 +89,14 @@ curl -X POST https://api.almendra.ai/api/v1/ingest \
 ```
 
 ```python Python
+import os
 import requests
 
 # Raw text ingest
 response = requests.post(
     "https://api.almendra.ai/api/v1/ingest",
     headers={
-        "Authorization": f"Bearer {ALMENDRA_API_KEY}",
+        "Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}",
         "Content-Type": "application/json",
     },
     json={
@@ -140,14 +141,14 @@ console.log(data);
 ## Response Fields
 
 <ResponseField name="id" type="string">
-  Unique identifier for this ingest job. Use this ID to poll the status of asynchronous ingests via `GET /api/v1/ingest/{id}`.
+  Unique identifier for this ingest job. Returned for both synchronous and asynchronous processing. Store this value to correlate ingested content with results returned by `/query` and `/search`.
 </ResponseField>
 
 <ResponseField name="status" type="string">
   Processing status of the ingest job. One of two values:
 
-  - `indexed` — Content was small enough to process synchronously. Chunks are immediately available for search and query.
-  - `processing` — Content is being processed asynchronously (typical for large documents or URL ingests). Poll `GET /api/v1/ingest/{id}` for completion.
+  - `indexed` — Content was processed synchronously. Chunks are immediately available for search and query.
+  - `processing` — Content is being processed asynchronously (typical for large documents or URL ingests). The chunks will become available once processing completes.
 </ResponseField>
 
 <ResponseField name="chunks" type="integer">
@@ -165,7 +166,7 @@ console.log(data);
 ```
 
 <Tip>
-  For large batches, poll `GET /api/v1/ingest/{id}` to check when processing is complete.
+  For large documents or URL ingests that return `"status": "processing"`, re-run your `/search` or `/query` request after a short delay to verify the chunks are available.
 </Tip>
 
 ## Error Responses
@@ -175,8 +176,10 @@ console.log(data);
 
   ```json
   {
-    "error": "bad_request",
-    "message": "Provide either 'content' or 'url', not both."
+    "error": {
+      "code": "bad_request",
+      "message": "Provide either 'content' or 'url', not both."
+    }
   }
   ```
 </Accordion>
@@ -186,8 +189,10 @@ console.log(data);
 
   ```json
   {
-    "error": "unauthorized",
-    "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+    "error": {
+      "code": "unauthorized",
+      "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+    }
   }
   ```
 </Accordion>
@@ -197,8 +202,10 @@ console.log(data);
 
   ```json
   {
-    "error": "unprocessable_content",
-    "message": "Failed to fetch the provided URL. Ensure the page is publicly accessible and returns parseable HTML."
+    "error": {
+      "code": "unprocessable_content",
+      "message": "Failed to fetch the provided URL. Ensure the page is publicly accessible and returns parseable HTML."
+    }
   }
   ```
 </Accordion>
@@ -208,9 +215,10 @@ console.log(data);
 
   ```json
   {
-    "error": "rate_limit_exceeded",
-    "message": "You have exceeded the request rate limit. Please retry after 30 seconds.",
-    "retry_after": 30
+    "error": {
+      "code": "rate_limit_exceeded",
+      "message": "You have exceeded the request rate limit. Please retry after 30 seconds."
+    }
   }
   ```
 </Accordion>

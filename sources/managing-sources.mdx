@@ -1,7 +1,7 @@
 ---
-title: "Manage, Resync, and Remove Knowledge Sources"
+title: "Manage, Resync, and Remove Knowledge Sources in Almendra"
 sidebarTitle: "Managing Sources"
-description: "View sync status, trigger manual resyncs, update source scope, and remove knowledge sources from your Almendra workspace."
+description: "View sync status, trigger manual resyncs, update source scope, pause syncing, and permanently remove knowledge sources from your Almendra workspace."
 ---
 
 Once you've connected your knowledge sources, Almendra gives you full control over how they sync and what they contribute to your company brain. From the Sources page in the dashboard you can monitor indexing health, trigger immediate resyncs, adjust scope, pause sources temporarily, or remove them permanently. This page covers each management action in detail.
@@ -26,24 +26,7 @@ Click any source name to open its detail panel. There you'll find the full **Syn
 
 Almendra resyncs sources automatically on the configured schedule, but you can trigger a resync at any time — for example, immediately after making significant changes to your source content.
 
-**From the dashboard:** On the Sources page, find the source you want to resync and click **Resync** in its action menu (the three-dot icon on the right). The status changes to **Indexing** while the sync runs.
-
-**From the API:** Send a POST request to the source's resync endpoint using the source ID. You can find the source ID in the source detail panel under **Settings**.
-
-```bash
-curl -X POST https://api.almendra.ai/api/v1/sources/src_abc123/resync \
-  -H "Authorization: Bearer $ALMENDRA_API_KEY"
-```
-
-A successful response confirms the sync has been queued:
-
-```json
-{
-  "source_id": "src_abc123",
-  "status": "indexing",
-  "queued_at": "2025-01-15T10:32:00Z"
-}
-```
+**From the dashboard:** On the Sources page, find the source you want to resync and click **Resync** in its action menu (the three-dot icon on the right). The status changes to **Indexing** while the sync runs. You can monitor live progress by clicking the source name and opening **Sync History**.
 
 <Tip>
   If a source is in **Error** status, triggering a manual resync is a good first step. Check the Sync History for the specific error message before reaching out to support — many errors resolve on re-try after a transient upstream issue (such as an OAuth token expiry or a rate-limit from the source API).

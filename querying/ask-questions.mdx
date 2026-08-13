@@ -1,5 +1,5 @@
 ---
-title: "Ask Questions with AI-Synthesized Answers"
+title: "Ask Questions and Get AI-Synthesized Answers in Almendra"
 sidebarTitle: "Ask Questions"
 description: "Use Almendra's AI Q&A to get synthesized answers from your connected knowledge sources, complete with source citations and a confidence score."
 ---
@@ -71,7 +71,8 @@ A successful request returns a JSON object containing the synthesized answer, a 
       "url": "https://notion.so/..."
     }
   ],
-  "escalated": false
+  "escalated": false,
+  "model_used": "gpt-4o"
 }
 ```
 
@@ -81,10 +82,15 @@ A successful request returns a JSON object containing the synthesized answer, a 
 | `confidence` | float | A score from 0.0 to 1.0 reflecting how strongly the evidence supports the answer. |
 | `sources` | array | The document chunks used to construct the answer, each with an id, title, source connector, relevance score, and URL. |
 | `escalated` | boolean | `true` if Almendra determined the question requires human review. See [Citations & Confidence](/querying/citations-confidence) for details. |
+| `model_used` | string | The name of the model that generated this response. |
 
-## Filtering by Source
+## Optional Request Parameters
 
-If you want to scope a question to a specific subset of your connected sources, pass a `source_ids` array in the request body. Almendra will only search within the specified sources when generating the answer.
+In addition to `question`, the query endpoint accepts the following optional parameters to control how results are retrieved and generated.
+
+### `source_ids` — Filter by Source
+
+Pass a `source_ids` array to scope the question to a specific subset of your connected sources. Almendra will only search within the specified sources when generating the answer.
 
 ```json
 {
@@ -94,6 +100,28 @@ If you want to scope a question to a specific subset of your connected sources, 
 ```
 
 This is useful when you know a topic lives in a particular system — for example, limiting an engineering question to your GitHub wiki — or when building a scoped assistant that should only draw from a defined set of documents.
+
+### `top_k` — Control Retrieved Chunks
+
+Pass `top_k` (integer) to control how many source document chunks Almendra retrieves before synthesizing the answer. The default value is `5`. Increasing this can improve coverage for broad questions at the cost of slightly higher latency.
+
+```json
+{
+  "question": "Summarize our onboarding process.",
+  "top_k": 10
+}
+```
+
+### `model` — Select the Generation Model
+
+Pass `model` (string) to specify which language model Almendra should use to synthesize the answer. When omitted, Almendra selects the default model for your workspace. The model name used is always reflected in the `model_used` field of the response.
+
+```json
+{
+  "question": "What is our pricing for the enterprise tier?",
+  "model": "gpt-4o"
+}
+```
 
 <Tip>
   Scores above 0.85 indicate strong evidence in your knowledge base. If confidence is below 0.5, the question may touch on a knowledge gap — check the **Knowledge Gaps** section in your dashboard to see which topics lack coverage and where you should add or update content.

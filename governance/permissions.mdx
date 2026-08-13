@@ -1,17 +1,10 @@
 ---
-title: "Permissions and Access Control in Almendra"
+title: "Permissions and Role-Based Access Control in Almendra"
 sidebarTitle: "Permissions"
 description: "Almendra enforces role-based access control and inherits source-level permissions so users and agents only see knowledge they are authorized to access."
 ---
 
 Almendra protects your organization's knowledge with two independent layers of access control: workspace roles that govern what actions a person or integration can perform inside Almendra, and source-level permissions inherited directly from the tools you connect. Together, these layers ensure that every answer Almendra returns respects the same boundaries your team already maintains in Notion, Confluence, GitHub, Zendesk, and every other connected source.
-
-## How permissions work
-
-Almendra enforces two layers of access control:
-
-1. **Workspace roles** — control what actions a member can perform in Almendra (e.g., add sources, manage members, view the audit log).
-2. **Source-level permissions** — inherited from the original tool. A Notion page that only specific team members can view in Notion will only appear in Almendra answers for those same users.
 
 ## Workspace roles
 
@@ -102,7 +95,7 @@ Each API key can be scoped to a specific subset of sources, giving you fine-grai
 
 Remove access immediately whenever a team member leaves your organization or an integration is decommissioned.
 
-- **Remove a member**: Go to **Settings → Members** and click **Remove** next to the member's name. Their session tokens are invalidated immediately.
+- **Remove a member**: Go to **Settings → Members** and click **Remove** next to the member's name. Their access is revoked immediately.
 - **Revoke an API key**: Go to **Settings → API Keys** and click **Revoke** next to the key. The revocation takes effect on the next inbound request — there is no grace period.
 
 <Tip>

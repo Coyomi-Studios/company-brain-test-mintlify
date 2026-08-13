@@ -52,12 +52,13 @@ curl -X POST https://api.almendra.ai/api/v1/query \
 ```
 
 ```python Python
+import os
 import requests
 
 response = requests.post(
     "https://api.almendra.ai/api/v1/query",
     headers={
-        "Authorization": f"Bearer {ALMENDRA_API_KEY}",
+        "Authorization": f"Bearer {os.environ['ALMENDRA_API_KEY']}",
         "Content-Type": "application/json",
     },
     json={
@@ -158,8 +159,10 @@ console.log(data);
 
   ```json
   {
-    "error": "bad_request",
-    "message": "The 'question' field is required and must be a non-empty string."
+    "error": {
+      "code": "bad_request",
+      "message": "The 'question' field is required and must be a non-empty string."
+    }
   }
   ```
 
@@ -171,8 +174,10 @@ console.log(data);
 
   ```json
   {
-    "error": "unauthorized",
-    "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+    "error": {
+      "code": "unauthorized",
+      "message": "Invalid or missing API key. Provide a valid Bearer token in the Authorization header."
+    }
   }
   ```
 
@@ -184,9 +189,10 @@ console.log(data);
 
   ```json
   {
-    "error": "rate_limit_exceeded",
-    "message": "You have exceeded the request rate limit. Please retry after 30 seconds.",
-    "retry_after": 30
+    "error": {
+      "code": "rate_limit_exceeded",
+      "message": "You have exceeded the request rate limit. Please retry after 30 seconds."
+    }
   }
   ```
 
